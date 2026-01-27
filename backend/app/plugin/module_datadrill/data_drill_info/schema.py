@@ -65,6 +65,7 @@ class DrillSQLValidateResponse(BaseModel):
     valid: bool
     message: str
     columns: List[str] = []
+    params: List[str] = []
     sql: Optional[str] = None
 
 class DrillExecuteRequest(BaseModel):

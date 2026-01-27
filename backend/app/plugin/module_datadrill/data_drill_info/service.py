@@ -94,6 +94,8 @@ class PxmDataDrillNodeService:
 class DrillService:
     @classmethod
     async def validate_sql(cls, auth: AuthSchema, data: DrillSQLValidateRequest) -> DrillSQLValidateResponse:
+        from sqlglot import parse_one, exp
+        
         sql = data.sql_text.strip()
         
         # 1. Regex Checks
@@ -112,50 +114,49 @@ class DrillService:
 
         # 2. Execution Check & Column Extraction
         try:
-            # Run with LIMIT 0 to get columns
-            # Note: We must handle potential parameters if the SQL has them?
-            # The validation SQL usually shouldn't have unbound parameters OR we need to provide dummy values.
-            # If the user writes `SELECT * FROM table WHERE id = :id`, this will fail without params.
-            # We can try to regex find params and bind None or 0?
-            # Or we expect the user to provide a "Test Param" in the UI?
-            # For now, we wrap it. If it fails due to params, we catch it.
-            # Strategy: We can't easily guess params.
-            # We will tell the user "Valid SQL structure, but execution failed (possibly due to missing params)".
-            # But we NEED columns.
-            # If we cannot run it, we cannot get columns.
-            # Solution: We ask the user to provide test params? 
-            # OR we try to parse it with SQLAlchemy text(sql).compile().params?
+            # Parse SQL
+            parsed = parse_one(sql)
             
-            # Simple approach: Try to execute. If param error, return valid=False with hint.
-            # Better: Use `EXPLAIN`? No, result keys are needed.
+            # Extract bind parameters
+            # Look for explicit binds :param or $param which often appear as Identifier/Parameter in sqlglot depending on dialect
+            # We look for nodes that start with ':'
+            # Note: sqlglot might parse :param as a Parameter node or Identifier
+            params = set()
+            for node in parsed.find_all(exp.Parameter, exp.Placeholder, exp.Identifier):
+                if isinstance(node, exp.Parameter):
+                     # Key is usually the name inside
+                     val = node.this
+                     if val: params.add(str(val))
+                elif isinstance(node, exp.Placeholder):
+                     val = node.this
+                     if val: params.add(str(val))
+                # For basic :param syntax, sqlglot often parses as Identifier with quoted=False? 
+                # Actually, standard SQLGlot parsing of ":param" depends on read dialect.
+                # Assuming standard SQL or Postgres.
             
-            # Hack: If we encounter param errors, we might not get columns.
-            # Let's try to run it.
+            # A more robust way using Regex for params since SQL dialects vary on bind syntax
+            # and sqlglot might need specific read dialect.
+            # We use a simple regex to find :param_name to be safe and consistent with SQLAlchemy
+            found_params = re.findall(r':([a-zA-Z_][a-zA-Z0-9_]*)', sql)
+            params = list(set(found_params))
             
-            # IMPORTANT: The user requirement says "Select query field... source from parent".
-            # This implies we validate the PARENT SQL. Parent SQL usually has NO params (Root) or has params from *its* parent.
-            # Root SQL has no params. Child SQL has params.
-            # When validating Child SQL, we need params.
-            # Ideally, the validation UI allows inputting test params.
-            # For now, I will assume simple execution.
+            # Transform: Remove WHERE clause
+            def remove_where(node):
+                if isinstance(node, exp.Where):
+                    return None
+                return node
             
-            check_sql = f"SELECT * FROM ({sql}) t LIMIT 0"
-            # We use a transaction that rolls back to be safe, though it's a SELECT.
-            # But auth.db is async session.
+            clean_expression = parsed.transform(remove_where)
+            clean_sql = clean_expression.sql()
             
-            # We need to handle ":param" style.
-            # If the SQL contains `:`, SQLAlchemy expects params.
-            # We can try to inspect params using `text(sql).compile(dialect=...).params`?
-            # Or just pass empty dict and catch "missing param".
+            check_sql = f"SELECT * FROM ({clean_sql}) t LIMIT 0"
             
             result = await auth.db.execute(text(check_sql))
             columns = list(result.keys())
-            return DrillSQLValidateResponse(valid=True, message="校验通过", columns=columns)
+            return DrillSQLValidateResponse(valid=True, message="校验通过", columns=columns, params=params)
         except Exception as e:
              err_msg = str(e)
-             if "bind parameter" in err_msg.lower() or "parameter" in err_msg.lower():
-                 return DrillSQLValidateResponse(valid=False, message=f"SQL包含参数，无法自动校验列结构。请确保SQL语法正确。错误: {err_msg}")
-             return DrillSQLValidateResponse(valid=False, message=f"SQL执行失败: {err_msg}")
+             return DrillSQLValidateResponse(valid=False, message=f"SQL校验失败: {err_msg}")
 
     @classmethod
     async def execute_drill(cls, auth: AuthSchema, data: DrillExecuteRequest) -> DrillExecuteResponse:

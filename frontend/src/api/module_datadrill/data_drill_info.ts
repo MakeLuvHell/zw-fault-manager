@@ -34,6 +34,7 @@ export interface DrillSQLValidateResponse {
   valid: boolean;
   message: string;
   columns: string[];
+  params: string[];
 }
 
 export interface DrillExecuteRequest {

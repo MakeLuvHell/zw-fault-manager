@@ -327,49 +327,19 @@ async function loadParamNameOptions() {
   if (!sql) return;
   loadingParamName.value = true;
   try {
-    // Use backend validation API to extract parameters if possible,
-    // BUT the current API (validateSql) returns result columns, not input parameters.
-    // However, regex is unreliable for all SQL dialects.
-    // Since the user asked to "use query SQL return field names",
-    // it seems they might have misunderstood "param_name" as "output fields from current SQL"
-    // OR they want the fields from the PARENT SQL to be used as params here?
-
-    // Clarification:
-    // "param_name" usually refers to the parameter IN THE CURRENT SQL (e.g. `WHERE id = :param`)
-    // that will be filled by the parent's data.
-    // If the user wants "field names from SQL result", they might mean `link_field`.
-
-    // Re-reading user request: "请通过查询SQL返回字段名称的方式获取" (Please get it by querying SQL return field names).
-    // This strongly suggests they want the OUTPUT COLUMNS of the CURRENT SQL to be available as "param_name"?
-    // This is unusual. Usually `param_name` is an INPUT.
-    // UNLESS: The user means "Get the bind parameters detected by the backend".
-
-    // BUT, if the user implies "I want to select one of the columns of THIS node",
-    // then we should call `validateSql`.
-
-    // Let's assume the user wants to populate the dropdown with the result columns of the current SQL.
-    // (Even though `param_name` is typically an input bind variable).
-    // If the user actually means "I want to bind a parent column to a specific param name",
-    // and they want to pick from available params...
-
-    // Wait, if the user explicitly said "return field names" (返回字段名称),
-    // they likely mean `validateSql` which returns `columns`.
-
     const res = await API.validateSql({ sql_text: sql });
     if (res.data.data.valid) {
-      // The user might be confusing param_name (input) with link_field (output),
-      // OR they want to see what columns are available.
-      // But sticking to the instruction: use SQL return fields.
-      paramNameOptions.value = res.data.data.columns || [];
+      // Use the 'params' returned by the backend (input bind parameters)
+      paramNameOptions.value = res.data.data.params || [];
       if (paramNameOptions.value.length === 0) {
-        ElMessage.info("该SQL没有返回字段");
+        ElMessage.info("该SQL没有检测到绑定参数");
       }
     } else {
-      ElMessage.warning("SQL校验未通过，无法获取字段: " + res.data.data.message);
+      ElMessage.warning("SQL校验未通过，无法获取参数: " + res.data.data.message);
     }
   } catch (e) {
     console.error(e);
-    ElMessage.error("获取字段失败");
+    ElMessage.error("获取参数失败");
   } finally {
     loadingParamName.value = false;
   }
