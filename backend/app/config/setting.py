@@ -180,6 +180,16 @@ class Settings(BaseSettings):
     REQUEST_LIMITER_REDIS_PREFIX: str = "fastapiadmin:request_limiter:"
 
     # ================================================= #
+    # ******************* 外呼模块配置 ****************** #
+    # ================================================= #
+    CALLING_API_URL: str = "http://134.194.16.8:11000/api/openapi/dcoos2/produceMessage"
+    CALLING_APP_ID: str = "797d6e7328d6f23163972ab46aa6b009"
+    CALLING_APP_KEY: str = "d076f7b066cdfb5f1338db20257b7fdb"
+    CALLING_RETRY_COUNT: int = 3
+    CALLING_REQUEST_INTERVAL: float = 0
+    CALLING_SCHEDULE_INTERVAL_MINUTES: int = 5
+
+    # ================================================= #
     # ******************* 重构配置 ******************* #
     # ================================================= #
     @property

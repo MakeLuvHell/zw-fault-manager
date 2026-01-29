@@ -12,6 +12,8 @@ from app.api.v1.module_system.params.model import ParamsModel
 from app.api.v1.module_system.position.model import PositionModel
 from app.api.v1.module_system.role.model import RoleModel
 from app.api.v1.module_system.user.model import UserModel, UserRolesModel
+from app.plugin.module_application.job.model import JobModel
+from app.plugin.module_calling.model import CallLog
 from app.config.path_conf import SCRIPT_DIR
 from app.core.database import async_db_session, create_tables
 from app.core.logger import log
@@ -37,6 +39,8 @@ class InitializeData:
             PositionModel,
             UserModel,
             UserRolesModel,
+            JobModel,
+            CallLog,
         ]
 
     async def __init_create_table(self) -> None:

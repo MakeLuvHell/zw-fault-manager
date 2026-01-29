@@ -47,6 +47,7 @@ executors = {
 job_defaults = {
     "coalesce": True,  # 合并执行错过的任务
     "max_instances": 1,  # 最大实例数
+    "misfire_grace_time": 60,  # 允许 60 秒内的过期执行
 }
 # 配置调度器
 scheduler = AsyncIOScheduler()
