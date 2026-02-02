@@ -196,9 +196,8 @@ class CallingService:
             source_table = f'"{task_config.source_schema}"."{task_config.source_table}"'
             mobile_col = f'"{field_mapping["mobile_phone"]}"'
             
-            # 注意：这里假设 call_history 表在同一个数据库中，且表名为 call_history
-            # 如果源表和历史表不在同一个 schema，可能需要调整表名引用
-            # 目前系统都在同一个库，可以直接引用 public.call_history 或者 call_history
+            # 使用配置的 Schema
+            history_table = f'"{settings.CALLING_SCHEMA}"."call_history"'
             
             query = text(f"""
                 SELECT 
@@ -209,7 +208,7 @@ class CallingService:
                     "{field_mapping['order_nums']}" as order_nums
                 FROM {source_table} source_t
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM call_history h 
+                    SELECT 1 FROM {history_table} h 
                     WHERE h.mobile_phone = source_t.{mobile_col}::VARCHAR
                 )
             """)
