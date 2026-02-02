@@ -200,6 +200,8 @@ const emit = defineEmits<{
 
 // 执行类型
 const cronType = ref("daily");
+const isManualChange = ref(false);
+const isUpdatingFromCustom = ref(false);
 
 // 通用配置
 const hour = ref(9);
@@ -251,6 +253,7 @@ const cronDescription = computed(() => {
 
 // 类型变更
 function handleTypeChange() {
+  isManualChange.value = true;
   updateCron();
 }
 
@@ -282,6 +285,7 @@ function updateCron() {
       break;
     case "custom":
       expression = `${customSecond.value} ${customMinute.value} ${customHour.value} ${customDay.value} ${customMonth.value} ${customWeek.value}`;
+      isUpdatingFromCustom.value = true;
       break;
   }
 
@@ -306,6 +310,11 @@ function parseExpression(cron: string) {
   customDay.value = day;
   customMonth.value = month;
   customWeek.value = week;
+
+  // 如果当前是自定义模式且不是手动切换，则不进行模式识别
+  if (cronType.value === "custom" && !isManualChange.value) {
+    return;
+  }
 
   // 识别模式
   if (week === "1-5" && day === "*" && month === "*" && !min.includes("/") && !hr.includes("/")) {
@@ -343,6 +352,9 @@ function parseExpression(cron: string) {
   } else {
     cronType.value = "custom";
   }
+
+  // 重置手动切换标记
+  isManualChange.value = false;
 }
 
 // 监听外部值
@@ -350,6 +362,11 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
+      // 如果是从自定义模式更新的，不进行模式识别
+      if (isUpdatingFromCustom.value) {
+        isUpdatingFromCustom.value = false;
+        return;
+      }
       parseExpression(newVal);
     }
   },

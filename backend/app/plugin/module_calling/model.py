@@ -1,12 +1,23 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 from sqlalchemy import String, Integer, Boolean, Text, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, declared_attr
 
 from app.core.base_model import MappedBase
+from app.config.setting import settings
 
 
-class CallTask(MappedBase):
+class CallingBase(MappedBase):
+    """
+    外呼模块基类，统一指定 schema
+    """
+    __abstract__ = True
+
+    @declared_attr.directive
+    def __table_args__(cls):
+        return {"schema": settings.CALLING_SCHEMA}
+
+class CallTask(CallingBase):
     """
     外呼任务源表
     """
@@ -19,7 +30,7 @@ class CallTask(MappedBase):
     order_nums: Mapped[int] = mapped_column(Integer, comment="工单数量")
 
 
-class CallHistory(MappedBase):
+class CallHistory(CallingBase):
     """
     外呼历史记录表
     """
@@ -32,7 +43,7 @@ class CallHistory(MappedBase):
     order_nums: Mapped[int] = mapped_column(Integer, comment="工单数量")
 
 
-class CallLog(MappedBase):
+class CallLog(CallingBase):
     """
     外呼流水日志表
     """
@@ -50,7 +61,7 @@ class CallLog(MappedBase):
     push_time: Mapped[datetime] = mapped_column(default=datetime.now, comment="推送时间")
 
 
-class CallingTaskConfig(MappedBase):
+class CallingTaskConfig(CallingBase):
     """
     外呼任务配置表
     用于管理外呼任务的调度配置和字段映射

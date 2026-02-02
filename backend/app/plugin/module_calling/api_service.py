@@ -11,7 +11,7 @@ from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.exceptions import CustomException
 from app.core.database import async_db_session
 from app.core.logger import log
-from app.plugin.module_calling.model import CallingTaskConfig, CallLog
+from .model import CallingTaskConfig, CallLog
 from sqlalchemy import select, desc
 
 from .crud import CallingTaskCRUD

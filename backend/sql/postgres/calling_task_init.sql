@@ -28,6 +28,39 @@ COMMENT ON COLUMN calling_task_config.field_mapping IS '字段映射 JSON';
 COMMENT ON COLUMN calling_task_config.created_time IS '创建时间';
 COMMENT ON COLUMN calling_task_config.updated_time IS '更新时间';
 
+COMMENT ON COLUMN calling_task_config.updated_time IS '更新时间';
+
+-- ----------------------------
+-- 2. 初始化核心业务表
+-- ----------------------------
+
+-- 外呼历史表 (防重去重)
+CREATE TABLE IF NOT EXISTS call_history (
+    mobile_phone VARCHAR(20) PRIMARY KEY,
+    staff_name VARCHAR(50),
+    sys_name VARCHAR(50),
+    order_type VARCHAR(50),
+    order_nums INTEGER
+);
+COMMENT ON TABLE call_history IS '外呼历史记录表';
+COMMENT ON COLUMN call_history.mobile_phone IS '手机号码';
+
+-- 外呼日志表 (流水记录)
+CREATE TABLE IF NOT EXISTS call_log (
+    id SERIAL PRIMARY KEY,
+    mobile_phone VARCHAR(20),
+    staff_name VARCHAR(50),
+    sys_name VARCHAR(50),
+    order_type VARCHAR(50),
+    order_nums INTEGER,
+    status INTEGER,
+    error_msg VARCHAR(2000),
+    push_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS ix_call_log_mobile_phone ON call_log(mobile_phone);
+COMMENT ON TABLE call_log IS '外呼流水日志表';
+
+
 -- 插入外呼模块菜单
 -- 假设父菜单 ID 需要根据实际情况调整
 

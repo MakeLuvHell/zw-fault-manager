@@ -13,7 +13,8 @@ from app.core.base_params import PaginationQueryParam
 from app.core.dependencies import AuthPermission, redis_getter
 from app.core.logger import log
 from app.core.router_class import OperationLogRoute
-from app.plugin.module_calling.service import CallingService, CallingSchedulerService
+from app.core.router_class import OperationLogRoute
+from .service import CallingService, CallingSchedulerService
 
 from .schema import (
     CallingTaskCreateSchema,
@@ -25,7 +26,7 @@ from .schema import (
     ColumnInfoSchema,
     CallLogOutSchema,
 )
-from .service import CallingTaskService, MetadataService, CallLogService
+from .api_service import CallingTaskService, MetadataService, CallLogService
 
 
 CallingTaskRouter = APIRouter(route_class=OperationLogRoute, prefix="/task", tags=["外呼任务管理"])

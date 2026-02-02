@@ -38,6 +38,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[Any, Any]:
     from app.plugin.module_application.job.tools.ap_scheduler import SchedulerUtil
 
     try:
+        # 在初始化数据库之前，先创建 schema（如果是 PostgreSQL）
+        from app.utils.schema_util import create_schema_if_not_exists, set_default_schema
+        from app.core.database import async_engine
+        
+        if await create_schema_if_not_exists(async_engine, settings.DATABASE_SCHEMA):
+            log.info(f"✅ PostgreSQL 主 schema 检查/创建完成")
+
+        if await create_schema_if_not_exists(async_engine, settings.CALLING_SCHEMA):
+            log.info(f"✅ PostgreSQL calling 模块 schema ({settings.CALLING_SCHEMA}) 检查/创建完成")
+
         await InitializeData().init_db()
         log.info(f"✅ {settings.DATABASE_TYPE}数据库初始化完成")
         await import_modules_async(
@@ -141,12 +151,10 @@ def register_routers(app: FastAPI) -> None:
     from app.api.v1.module_common import common_router
     from app.api.v1.module_monitor import monitor_router
     from app.api.v1.module_system import system_router
-    from app.api.v1.module_calling import calling_router
 
     app.include_router(common_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
     app.include_router(system_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
     app.include_router(monitor_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
-    app.include_router(calling_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
 
     from app.plugin.module_application.ai.ws import WS_AI
 
