@@ -1,15 +1,1 @@
-[
-  {
-    "name": "自动外呼任务",
-    "jobstore": "redis",
-    "executor": "default",
-    "trigger": "cron",
-    "trigger_args": "0 0,15,30,45 15-17 * * 1-5",
-    "func": "calling_task.execute_calling_job",
-    "args": "",
-    "kwargs": "{}",
-    "coalesce": true,
-    "max_instances": 1,
-    "status": "0"
-  }
-]
+[]

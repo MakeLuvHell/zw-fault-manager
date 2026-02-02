@@ -50,6 +50,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[Any, Any]:
         log.info("✅ Redis数据字典初始化完成")
         await SchedulerUtil.init_system_scheduler(redis=app.state.redis)
         log.info("✅ 定时任务调度器初始化完成")
+        
+        # 初始化外呼任务调度
+        from app.plugin.module_calling.service import CallingSchedulerService
+        await CallingSchedulerService.init_calling_scheduler(redis=app.state.redis)
+        log.info("✅ 外呼任务调度初始化完成")
         await FastAPILimiter.init(
             redis=app.state.redis,
             prefix=settings.REQUEST_LIMITER_REDIS_PREFIX,
@@ -136,10 +141,12 @@ def register_routers(app: FastAPI) -> None:
     from app.api.v1.module_common import common_router
     from app.api.v1.module_monitor import monitor_router
     from app.api.v1.module_system import system_router
+    from app.api.v1.module_calling import calling_router
 
     app.include_router(common_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
     app.include_router(system_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
     app.include_router(monitor_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
+    app.include_router(calling_router, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
 
     from app.plugin.module_application.ai.ws import WS_AI
 
