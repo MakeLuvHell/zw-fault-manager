@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Path, Query
 from fastapi.responses import JSONResponse
-from redis.asyncio.client import Redis
+from redis.asyncio import Redis
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.common.request import PaginationService
@@ -25,6 +25,7 @@ from .schema import (
     TableInfoSchema,
     ColumnInfoSchema,
     CallLogOutSchema,
+    CleanupConfigSchema,
 )
 from .api_service import CallingTaskService, MetadataService, CallLogService
 
@@ -248,3 +249,62 @@ async def get_columns_controller(
     """获取列列表"""
     result = await MetadataService.get_columns_service(schema_name=schema_name, table_name=table_name)
     return SuccessResponse(data=result, msg="获取列列表成功")
+
+
+# ============ 清理配置 API ============
+
+CleanupRouter = APIRouter(prefix="/cleanup", tags=["历史清理配置"])
+
+@CleanupRouter.get(
+    "/config",
+    summary="获取清理配置",
+    description="获取每日自动清理历史记录的配置",
+    response_model=CleanupConfigSchema,
+)
+async def get_cleanup_config_controller(
+    redis: Annotated[Redis, Depends(redis_getter)],
+    auth: Annotated[AuthSchema, Depends(AuthPermission(["module_calling:cleanup:query"]))],
+) -> JSONResponse:
+    """获取清理配置"""
+    try:
+        from .api_service import CallingCleanupService
+        result = await CallingCleanupService.get_config_service(redis)
+        return SuccessResponse(data=result, msg="获取配置成功")
+    except Exception as e:
+        log.error(f"获取清理配置失败: {e}")
+        return SuccessResponse(data={"is_enabled": False, "cron_expr": "0 0 0 * * *"}, msg="获取配置失败，返回默认值")
+
+
+@CleanupRouter.post(
+    "/config",
+    summary="保存清理配置",
+    description="保存每日自动清理历史记录的配置，并更新调度任务",
+)
+async def set_cleanup_config_controller(
+    data: CleanupConfigSchema,
+    redis: Annotated[Redis, Depends(redis_getter)],
+    auth: Annotated[AuthSchema, Depends(AuthPermission(["module_calling:cleanup:update"]))],
+) -> JSONResponse:
+    """保存清理配置"""
+    from .api_service import CallingCleanupService
+    await CallingCleanupService.set_config_service(redis, data.model_dump())
+    log.info(f"更新清理配置成功: {data}")
+    return SuccessResponse(msg="保存配置成功")
+
+
+@CleanupRouter.post(
+    "/execute",
+    summary="立即执行清理",
+    description="立即清空历史记录表",
+)
+async def execute_cleanup_controller(
+    auth: Annotated[AuthSchema, Depends(AuthPermission(["module_calling:cleanup:execute"]))],
+) -> JSONResponse:
+    """立即执行清理"""
+    from .api_service import CallingCleanupService
+    # 异步执行，不阻塞接口
+    import asyncio
+    asyncio.create_task(CallingCleanupService.execute_cleanup())
+    
+    log.info("用户触发立即清理历史记录")
+    return SuccessResponse(msg="已触发清理任务，请稍后查看日志")

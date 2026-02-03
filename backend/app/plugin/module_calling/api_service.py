@@ -6,6 +6,11 @@ from collections.abc import Sequence
 
 from fastapi import status
 from sqlalchemy import text
+from redis.asyncio import Redis
+from apscheduler.triggers.cron import CronTrigger
+import time
+
+from app.config.setting import settings
 
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.exceptions import CustomException
@@ -293,7 +298,7 @@ class CallLogService:
     @classmethod
     async def get_recent_logs_service(cls, limit: int = 100) -> List[CallLogOutSchema]:
         """
-        获取最近的日志
+        获取最近的日志（仅今天）
 
         参数:
         - limit (int): 返回数量限制
@@ -301,9 +306,15 @@ class CallLogService:
         返回:
         - List[CallLogOutSchema]: 日志列表
         """
+        from datetime import datetime, time as dt_time
+        
+        # 获取今天的开始时间
+        today_start = datetime.combine(datetime.now().date(), dt_time.min)
+        
         async with async_db_session() as db:
             result = await db.execute(
                 select(CallLog)
+                .where(CallLog.push_time >= today_start)
                 .order_by(desc(CallLog.push_time))
                 .limit(limit)
             )
@@ -402,9 +413,90 @@ class PreviewDataService:
                 for row in rows
             ]
             
+                
             return {
                 "total": total,
                 "items": items,
                 "page_no": page_no,
                 "page_size": page_size
             }
+
+
+class CallingCleanupService:
+    """历史记录清理服务"""
+    
+    # Redis 配置 Key
+    REDIS_KEY_CONFIG = "calling:cleanup:config"
+    # 调度任务 ID
+    JOB_ID = "calling_history_cleanup_daily"
+
+    @classmethod
+    async def get_config_service(cls, redis: Redis) -> dict:
+        """获取清理配置"""
+        config_str = await redis.get(cls.REDIS_KEY_CONFIG)
+        if config_str:
+            return json.loads(config_str)
+        # 默认配置
+        return {"is_enabled": True, "cron_expr": "0 0 0 * * *"}
+
+    @classmethod
+    async def set_config_service(cls, redis: Redis, data: dict):
+        """保存清理配置并更新调度"""
+        await redis.set(cls.REDIS_KEY_CONFIG, json.dumps(data))
+        
+        # 刷新调度任务
+        await cls.refresh_job(redis, data)
+
+    @classmethod
+    async def execute_cleanup(cls):
+        """执行清理操作"""
+        start_time = time.time()
+        log.info("====== 开始执行历史记录清理 ======")
+        
+        async with async_db_session() as db:
+            try:
+                # 使用 TRUNCATE 快速清空
+                await db.execute(text(f'TRUNCATE TABLE "{settings.CALLING_SCHEMA}"."call_history"'))
+                await db.commit()
+                log.info("历史记录表已清空 (call_history)")
+            except Exception as e:
+                await db.rollback()
+                log.error(f"清理历史记录失败: {e}")
+                
+        duration = time.time() - start_time
+        log.info(f"====== 清理完成，耗时 {duration:.2f} 秒 ======")
+
+    @classmethod
+    async def refresh_job(cls, redis: Redis, config: dict = None):
+        """刷新调度任务"""
+        from app.plugin.module_application.job.tools.ap_scheduler import scheduler
+        
+        if config is None:
+            config = await cls.get_config_service(redis)
+            
+        # 先移除旧任务
+        if scheduler.get_job(cls.JOB_ID):
+            scheduler.remove_job(cls.JOB_ID)
+            log.info(f"已移除清理调度任务: {cls.JOB_ID}")
+            
+        # 如果启用，则添加新任务
+        if config.get("is_enabled"):
+            try:
+                cron_parts = config.get("cron_expr", "0 0 0 * * *").split()
+                if len(cron_parts) >= 5:
+                    scheduler.add_job(
+                        cls.execute_cleanup,
+                        CronTrigger(
+                            second=cron_parts[0] if len(cron_parts) > 5 else '0',
+                            minute=cron_parts[1] if len(cron_parts) > 5 else cron_parts[0],
+                            hour=cron_parts[2] if len(cron_parts) > 5 else cron_parts[1],
+                            day=cron_parts[3] if len(cron_parts) > 5 else cron_parts[2],
+                            month=cron_parts[4] if len(cron_parts) > 5 else cron_parts[3],
+                            day_of_week=cron_parts[5] if len(cron_parts) > 5 else cron_parts[4],
+                        ),
+                        id=cls.JOB_ID,
+                        replace_existing=True
+                    )
+                    log.info(f"已添加清理调度任务: {cls.JOB_ID}, Cron: {config['cron_expr']}")
+            except Exception as e:
+                log.error(f"添加清理调度任务失败: {e}")

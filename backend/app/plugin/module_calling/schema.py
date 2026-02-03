@@ -118,3 +118,11 @@ class PreviewDataResultSchema(BaseModel):
     items: list[PreviewDataItemSchema] = Field(..., description="数据列表")
     page_no: int = Field(..., description="当前页码")
     page_size: int = Field(..., description="每页数量")
+
+
+# ============ 清理配置 Schema ============
+
+class CleanupConfigSchema(BaseModel):
+    """历史清理配置"""
+    is_enabled: bool = Field(default=True, description="是否开启自动清理")
+    cron_expr: str = Field(default="0 0 0 * * *", description="清理周期的 Cron 表达式")

@@ -89,6 +89,17 @@
         </div>
 
         <div class="data-table__toolbar--right">
+          <el-tooltip content="清理设置">
+            <el-button
+              v-hasPerm="['module_calling:cleanup:query']"
+              type="danger"
+              plain
+              icon="Delete"
+              @click="handleOpenCleanupModal"
+            >
+              历史清理
+            </el-button>
+          </el-tooltip>
           <el-tooltip content="执行日志">
             <el-button
               v-hasPerm="['module_calling:task:query']"
@@ -230,6 +241,9 @@
 
     <!-- 数据预览弹窗 -->
     <PreviewDataModal v-model="previewModalVisible" :task-id="previewTaskId" />
+
+    <!-- 历史清理弹窗 -->
+    <CleanupSettingsModal v-model="cleanupModalVisible" />
   </div>
 </template>
 
@@ -241,6 +255,7 @@ import CallingTaskAPI, { type CallingTaskInfo, type CallingTaskQuery } from "@/a
 import TaskEditModal from "./components/TaskEditModal.vue";
 import LogViewerModal from "./components/LogViewerModal.vue";
 import PreviewDataModal from "./components/PreviewDataModal.vue";
+import CleanupSettingsModal from "./components/CleanupSettingsModal.vue";
 
 defineOptions({
   name: "CallingTask",
@@ -260,6 +275,7 @@ const editingTaskId = ref<number | undefined>(undefined);
 const logModalVisible = ref(false);
 const previewModalVisible = ref(false);
 const previewTaskId = ref<number | undefined>(undefined);
+const cleanupModalVisible = ref(false);
 
 // 查询参数
 const queryFormData = reactive<CallingTaskQuery>({
@@ -368,10 +384,14 @@ function handleOpenLogModal() {
   logModalVisible.value = true;
 }
 
-// 打开预览弹窗
 function handleOpenPreviewModal(taskId: number) {
   previewTaskId.value = taskId;
   previewModalVisible.value = true;
+}
+
+// 打开清理设置弹窗
+function handleOpenCleanupModal() {
+  cleanupModalVisible.value = true;
 }
 
 onMounted(() => {

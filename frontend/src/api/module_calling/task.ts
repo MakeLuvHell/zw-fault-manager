@@ -228,5 +228,47 @@ export const MetadataAPI = {
   },
 };
 
+
+/**
+ * 历史清理配置
+ */
+export interface CleanupConfig {
+  is_enabled: boolean;
+  cron_expr: string;
+}
+
+export const CleanupAPI = {
+  /**
+   * 获取清理配置
+   */
+  getConfig() {
+    return request<ApiResponse<CleanupConfig>>({
+      url: "/calling/cleanup/config",
+      method: "get",
+    });
+  },
+
+  /**
+   * 保存清理配置
+   */
+  setConfig(data: CleanupConfig) {
+    return request<ApiResponse>({
+      url: "/calling/cleanup/config",
+      method: "post",
+      data,
+    });
+  },
+
+  /**
+   * 立即执行清理
+   */
+  executeCleanup() {
+    return request<ApiResponse>({
+      url: "/calling/cleanup/execute",
+      method: "post",
+    });
+  },
+};
+
 export default CallingTaskAPI;
 

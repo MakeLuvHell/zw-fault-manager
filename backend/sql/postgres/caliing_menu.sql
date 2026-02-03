@@ -50,5 +50,17 @@ BEGIN
     INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
     VALUES ('执行', 3, 5, 'module_calling:task:execute', task_menu_id, task_menu_id + 5, gen_random_uuid(), '0', '执行', false, true, false, false, NOW(), NOW());
 
+    INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id,"uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+    VALUES('详情', 3, 6, 'module_calling:task:detail', task_menu_id,task_menu_id + 6, gen_random_uuid(), '0', '详情', false, true, false, false, NOW(), NOW());
+    
+    INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+    VALUES('清理查询', 3, 7, 'module_calling:cleanup:query',task_menu_id, task_menu_id + 7, gen_random_uuid(), '0', '清理查询', false, true, false, false, NOW(), NOW());
+    
+    INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+    VALUES('清理设置', 3, 8, 'module_calling:cleanup:update', task_menu_id,task_menu_id + 8, gen_random_uuid(), '0', '清理设置', false, true, false, false, NOW(), NOW());
+    
+    INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+    VALUES('清理执行', 3, 9, 'module_calling:cleanup:execute', task_menu_id,task_menu_id + 9, gen_random_uuid(), '0', '清理执行', false, true, false, false, NOW(), NOW());
+
     RAISE NOTICE '外呼模块初始化成功！';
 END $$;
