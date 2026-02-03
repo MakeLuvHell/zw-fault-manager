@@ -99,3 +99,22 @@ class CallLogOutSchema(BaseModel):
     push_time: str = Field(..., description="推送时间")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ============ 预览数据相关 Schema ============
+
+class PreviewDataItemSchema(BaseModel):
+    """待推送数据项"""
+    mobile_phone: str = Field(..., description="手机号码")
+    staff_name: str = Field(..., description="员工姓名")
+    sys_name: str = Field(..., description="系统名称")
+    order_type: str = Field(..., description="工单类型")
+    order_nums: int = Field(..., description="工单数量")
+
+
+class PreviewDataResultSchema(BaseModel):
+    """待推送数据预览结果"""
+    total: int = Field(..., description="待推送总数")
+    items: list[PreviewDataItemSchema] = Field(..., description="数据列表")
+    page_no: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页数量")

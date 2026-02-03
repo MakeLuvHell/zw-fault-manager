@@ -174,6 +174,16 @@
               立即执行
             </el-button>
             <el-button
+              v-hasPerm="['module_calling:task:query']"
+              type="warning"
+              size="small"
+              link
+              icon="View"
+              @click="handleOpenPreviewModal(scope.row.id)"
+            >
+              预览
+            </el-button>
+            <el-button
               v-hasPerm="['module_calling:task:update']"
               type="primary"
               size="small"
@@ -217,6 +227,9 @@
 
     <!-- 日志查看弹窗 -->
     <LogViewerModal v-model="logModalVisible" />
+
+    <!-- 数据预览弹窗 -->
+    <PreviewDataModal v-model="previewModalVisible" :task-id="previewTaskId" />
   </div>
 </template>
 
@@ -227,6 +240,7 @@ import { QuestionFilled } from "@element-plus/icons-vue";
 import CallingTaskAPI, { type CallingTaskInfo, type CallingTaskQuery } from "@/api/module_calling/task";
 import TaskEditModal from "./components/TaskEditModal.vue";
 import LogViewerModal from "./components/LogViewerModal.vue";
+import PreviewDataModal from "./components/PreviewDataModal.vue";
 
 defineOptions({
   name: "CallingTask",
@@ -244,6 +258,8 @@ const selectIds = ref<number[]>([]);
 const modalVisible = ref(false);
 const editingTaskId = ref<number | undefined>(undefined);
 const logModalVisible = ref(false);
+const previewModalVisible = ref(false);
+const previewTaskId = ref<number | undefined>(undefined);
 
 // 查询参数
 const queryFormData = reactive<CallingTaskQuery>({
@@ -350,6 +366,12 @@ async function handleExecute(row: CallingTaskInfo) {
 // 打开日志弹窗
 function handleOpenLogModal() {
   logModalVisible.value = true;
+}
+
+// 打开预览弹窗
+function handleOpenPreviewModal(taskId: number) {
+  previewTaskId.value = taskId;
+  previewModalVisible.value = true;
 }
 
 onMounted(() => {

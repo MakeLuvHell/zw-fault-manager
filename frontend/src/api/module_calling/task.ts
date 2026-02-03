@@ -85,6 +85,27 @@ export interface CallLogInfo {
   push_time: string;
 }
 
+/**
+ * 待推送数据项
+ */
+export interface PreviewDataItem {
+  mobile_phone: string;
+  staff_name: string;
+  sys_name: string;
+  order_type: string;
+  order_nums: number;
+}
+
+/**
+ * 待推送数据预览结果
+ */
+export interface PreviewDataResult {
+  total: number;
+  items: PreviewDataItem[];
+  page_no: number;
+  page_size: number;
+}
+
 export const CallingTaskAPI = {
   /**
    * 获取任务列表
@@ -158,6 +179,17 @@ export const CallingTaskAPI = {
       url: `${API_PATH}/logs`,
       method: "get",
       params: { limit },
+    });
+  },
+
+  /**
+   * 预览待推送数据
+   */
+  previewData(taskId: number, pageNo: number = 1, pageSize: number = 20) {
+    return request<ApiResponse<PreviewDataResult>>({
+      url: `${API_PATH}/preview/${taskId}`,
+      method: "get",
+      params: { page_no: pageNo, page_size: pageSize },
     });
   },
 };

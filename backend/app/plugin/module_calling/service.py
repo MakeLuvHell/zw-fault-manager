@@ -124,6 +124,10 @@ class CallingService:
 
         for attempt in range(settings.CALLING_RETRY_COUNT):
             try:
+                # 首次尝试时记录请求体
+                if attempt == 0:
+                    log.info(f"推送请求体 ({mobile}): {json.dumps(body, ensure_ascii=False, indent=2)}")
+                
                 response = await client.post(
                     settings.CALLING_API_URL,
                     json=body,
@@ -132,8 +136,20 @@ class CallingService:
                 )
                 
                 if response.status_code == 200:
-                    log.info(f"推送成功: {mobile}")
-                    return True, ""
+                    try:
+                        resp_json = response.json()
+                        resp_code = resp_json.get("contractRoot", {}).get("svcCont", {}).get("result", {}).get("resp_code")
+                        result_msg = resp_json.get("contractRoot", {}).get("svcCont", {}).get("result", {}).get("result_msg", "")
+                        
+                        if resp_code == "0":
+                            log.info(f"推送成功: {mobile}")
+                            return True, ""
+                        else:
+                            last_error = f"业务失败 (code={resp_code}): {result_msg}"
+                            log.warning(f"推送业务失败 ({attempt + 1}/{settings.CALLING_RETRY_COUNT}): {last_error}")
+                    except Exception as e:
+                        last_error = f"解析响应失败: {str(e)}"
+                        log.warning(f"响应解析异常 ({attempt + 1}/{settings.CALLING_RETRY_COUNT}): {last_error}")
                 else:
                     last_error = f"HTTP {response.status_code} - {response.text[:200]}"
                     log.warning(f"推送失败 ({attempt + 1}/{settings.CALLING_RETRY_COUNT}): {last_error}")

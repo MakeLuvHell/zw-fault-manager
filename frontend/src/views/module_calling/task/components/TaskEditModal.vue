@@ -1,11 +1,13 @@
 <!-- 外呼任务编辑弹窗 -->
 <template>
-  <el-drawer
+  <el-dialog
     v-model="visible"
     :title="title"
-    :size="drawerSize"
+    :width="dialogWidth"
+    align-center
     append-to-body
     destroy-on-close
+    class="task-edit-dialog"
     @close="handleClose"
   >
     <el-form
@@ -201,7 +203,7 @@
         </el-button>
       </div>
     </template>
-  </el-drawer>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -238,8 +240,8 @@ const appStore = useAppStore();
 const formRef = ref();
 const submitLoading = ref(false);
 
-// 响应式抽屉尺寸
-const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "550px" : "90%"));
+// 响应式对话框宽度
+const dialogWidth = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "700px" : "90%"));
 
 // 弹窗可见性
 const visible = computed({
@@ -449,3 +451,22 @@ async function handleSubmit() {
   margin-top: 4px;
 }
 </style>
+
+<style>
+/* 任务编辑对话框样式 - 禁用滚动，一页显示 */
+.task-edit-dialog .el-dialog__body {
+  max-height: none;
+  overflow: visible;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.task-edit-dialog .el-divider {
+  margin: 12px 0;
+}
+
+.task-edit-dialog .el-form-item {
+  margin-bottom: 12px;
+}
+</style>
+

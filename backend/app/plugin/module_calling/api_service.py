@@ -321,3 +321,90 @@ class CallLogService:
                     push_time=log.push_time.strftime("%Y-%m-%d %H:%M:%S") if log.push_time else ""
                 ) for log in logs
             ]
+
+
+class PreviewDataService:
+    """待推送数据预览服务"""
+
+    @classmethod
+    async def get_pending_data_service(
+        cls,
+        task_id: int,
+        auth: Any,
+        page_no: int = 1,
+        page_size: int = 20
+    ) -> dict:
+        """
+        获取任务待推送数据预览
+
+        参数:
+        - task_id (int): 任务ID
+        - auth: 认证信息
+        - page_no (int): 页码
+        - page_size (int): 每页数量
+
+        返回:
+        - dict: 包含 total, items, page_no, page_size
+        """
+        from app.config.setting import settings
+        
+        # 获取任务配置
+        task = await CallingTaskService.get_obj_detail_service(id=task_id, auth=auth)
+        
+        # 解析字段映射
+        field_mapping = task.field_mapping
+        
+        async with async_db_session() as db:
+            source_table = f'"{task.source_schema}"."{task.source_table}"'
+            mobile_col = f'"{field_mapping.mobile_phone}"'
+            history_table = f'"{settings.CALLING_SCHEMA}"."call_history"'
+            
+            # 查询总数
+            count_query = text(f"""
+                SELECT COUNT(*) 
+                FROM {source_table} source_t
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM {history_table} h 
+                    WHERE h.mobile_phone = source_t.{mobile_col}::VARCHAR
+                )
+            """)
+            count_result = await db.execute(count_query)
+            total = count_result.scalar() or 0
+            
+            # 分页查询数据
+            offset = (page_no - 1) * page_size
+            data_query = text(f"""
+                SELECT 
+                    {mobile_col} as mobile_phone,
+                    "{field_mapping.staff_name}" as staff_name,
+                    "{field_mapping.sys_name}" as sys_name,
+                    "{field_mapping.order_type}" as order_type,
+                    "{field_mapping.order_nums}" as order_nums
+                FROM {source_table} source_t
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM {history_table} h 
+                    WHERE h.mobile_phone = source_t.{mobile_col}::VARCHAR
+                )
+                LIMIT :limit OFFSET :offset
+            """)
+            
+            result = await db.execute(data_query, {"limit": page_size, "offset": offset})
+            rows = result.fetchall()
+            
+            items = [
+                {
+                    "mobile_phone": str(row[0]),
+                    "staff_name": str(row[1]) if row[1] else "",
+                    "sys_name": str(row[2]) if row[2] else "",
+                    "order_type": str(row[3]) if row[3] else "",
+                    "order_nums": int(row[4]) if row[4] else 0
+                }
+                for row in rows
+            ]
+            
+            return {
+                "total": total,
+                "items": items,
+                "page_no": page_no,
+                "page_size": page_size
+            }

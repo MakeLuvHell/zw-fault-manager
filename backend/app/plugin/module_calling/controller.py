@@ -180,6 +180,26 @@ async def get_logs_controller(
     return SuccessResponse(data=result, msg="获取日志成功")
 
 
+@CallingTaskRouter.get(
+    "/preview/{id}",
+    summary="预览待推送数据",
+    description="获取任务待推送的数据预览（排除已推送的数据）",
+)
+async def preview_pending_data_controller(
+    id: Annotated[int, Path(description="任务ID")],
+    auth: Annotated[AuthSchema, Depends(AuthPermission(["module_calling:task:query"]))],
+    page_no: Annotated[int, Query(description="页码", ge=1)] = 1,
+    page_size: Annotated[int, Query(description="每页数量", ge=1, le=100)] = 20,
+) -> JSONResponse:
+    """预览待推送数据"""
+    from .api_service import PreviewDataService
+    result = await PreviewDataService.get_pending_data_service(
+        task_id=id, auth=auth, page_no=page_no, page_size=page_size
+    )
+    log.info(f"预览待推送数据，任务ID: {id}，共 {result['total']} 条")
+    return SuccessResponse(data=result, msg="获取待推送数据成功")
+
+
 # ============ 元数据 API ============
 
 MetadataRouter = APIRouter(prefix="/metadata", tags=["数据库元数据"])
