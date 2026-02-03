@@ -143,6 +143,7 @@ class CallingService:
                         
                         if resp_code == "0":
                             log.info(f"推送成功: {mobile}")
+                            log.info(f"响应体 ({mobile}): {json.dumps(resp_json, ensure_ascii=False, indent=2)}")
                             return True, ""
                         else:
                             last_error = f"业务失败 (code={resp_code}): {result_msg}"
