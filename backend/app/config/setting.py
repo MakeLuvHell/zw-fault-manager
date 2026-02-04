@@ -96,6 +96,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str = "fastapiadmin"
     DATABASE_SCHEMA: str = 'public'        # PostgreSQL 主模式名称（系统核心表所在模式）
     CALLING_SCHEMA: str = 'calling'        # calling 模块专用模式
+    WXSAFE_SCHEMA: str = 'wxsafe'          # wxsafe 模块专用模式
 
     # ================================================= #
     # ******************** Redis配置 ******************* #

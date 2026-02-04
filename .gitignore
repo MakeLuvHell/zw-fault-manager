@@ -39,3 +39,16 @@ devops/nginx/fastapp/dist
 devops/nginx/fastdocs/dist
 devops/nginx/frontend/dist
 devops/nginx/ssl
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+package-lock.json
+package.json
+playwright.config.ts
+tests
+.github
