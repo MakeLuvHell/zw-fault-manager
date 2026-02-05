@@ -18,37 +18,47 @@
 
     <!-- 列表栏 -->
     <el-card shadow="never">
-      <template #header>
-        <div class="flex justify-between items-center">
-          <span class="font-bold">待核查任务列表</span>
-          <!-- 分公司用户一般没有导入权限，这里不放按钮 -->
-        </div>
-      </template>
-
-      <el-table v-loading="loading" :data="dataList">
-        <el-table-column label="线索编号" align="center" prop="clue_number" width="180" />
-        <el-table-column label="业务号码" align="center" prop="phone_number" width="150" />
-        <el-table-column label="入网属地" align="center" prop="join_location" width="120" />
-        <el-table-column label="涉诈类型" align="center" prop="fraud_type" show-overflow-tooltip />
-        <el-table-column label="涉诈时间" align="center" prop="incident_time" width="180" />
-        
-        <!-- 核查状态展示 (简单判断某个必填字段是否有值) -->
-        <el-table-column label="核查状态" align="center" width="100">
-          <template #default="scope">
-            <el-tag v-if="scope.row.feedback" type="success">已核查</el-tag>
-            <el-tag v-else type="warning">待核查</el-tag>
+      <el-tabs v-model="queryParams.status" @tab-change="handleTabChange">
+        <el-tab-pane name="pending">
+          <template #label>
+            待核查任务
+            <el-badge :value="counts.pending" :hidden="counts.pending === 0" class="ml-1" type="danger" />
           </template>
-        </el-table-column>
+        </el-tab-pane>
+        <el-tab-pane name="verified">
+          <template #label>
+            已核查记录
+            <el-badge :value="counts.verified" :hidden="counts.verified === 0" class="ml-1" type="info" />
+          </template>
+        </el-tab-pane>
+      </el-tabs>
 
-        <el-table-column label="操作" align="center" width="150" fixed="right">
+      <el-table v-loading="loading" :data="dataList" style="width: 100%; min-height: 400px;">
+        <el-table-column label="线索编号" align="center" prop="clue_number" width="180" />
+        <el-table-column label="业务号码" align="center" prop="phone_number" width="130" />
+        <el-table-column label="入网属地" align="center" prop="join_location" width="100" />
+        
+        <!-- 待核查视图特有列 -->
+        <template v-if="queryParams.status === 'pending'">
+          <el-table-column label="涉诈类型" align="center" prop="fraud_type" show-overflow-tooltip />
+          <el-table-column label="涉诈时间" align="center" prop="incident_time" width="170" />
+        </template>
+        
+        <!-- 已核查视图特有列 -->
+        <template v-else>
+          <el-table-column label="核查反馈" align="center" prop="feedback" show-overflow-tooltip />
+          <el-table-column label="更新时间" align="center" prop="updated_time" width="170" />
+        </template>
+
+        <el-table-column label="操作" align="center" width="120" fixed="right">
           <template #default="scope">
             <el-button 
-              type="primary" 
+              :type="queryParams.status === 'pending' ? 'primary' : 'success'" 
               link 
-              icon="Edit" 
+              :icon="queryParams.status === 'pending' ? 'Edit' : 'View'" 
               @click="handleInvestigate(scope.row)"
             >
-              核查补录
+              {{ queryParams.status === 'pending' ? '开始核查' : '详情/修改' }}
             </el-button>
           </template>
         </el-table-column>
@@ -61,8 +71,8 @@
           :total="total"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleQuery"
-          @current-change="handleQuery"
+          @size-change="getList"
+          @current-change="getList"
         />
       </div>
     </el-card>
@@ -78,7 +88,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { listWxSafeInfo } from '@/api/module_wxsafe/info';
+import { listWxSafeInvestigation, getWxSafeInvestigationCounts } from '@/api/module_wxsafe/info';
 import InvestigationDialog from './components/InvestigationDialog.vue';
 
 const loading = ref(false);
@@ -86,25 +96,48 @@ const total = ref(0);
 const dataList = ref([]);
 const dialogVisible = ref(false);
 const currentRow = ref({});
+const counts = reactive({
+  pending: 0,
+  verified: 0
+});
 
 const queryParams = reactive({
   page_no: 1,
   page_size: 10,
   clue_number: '',
-  phone_number: ''
+  phone_number: '',
+  status: 'pending'
 });
+
+/** 获取统计数量 */
+async function getCounts() {
+  try {
+    const res = await getWxSafeInvestigationCounts();
+    counts.pending = res.data.data.pending;
+    counts.verified = res.data.data.verified;
+  } catch (error) {
+    console.error('获取统计数量失败', error);
+  }
+}
 
 async function getList() {
   loading.value = true;
+  dataList.value = [];
   try {
-    const res = await listWxSafeInfo(queryParams);
+    const res = await listWxSafeInvestigation(queryParams);
     dataList.value = res.data.data.items;
     total.value = res.data.data.total;
+    // 每次查完列表顺便更新下 Tab 上的数字
+    getCounts();
   } catch (error) {
     console.error(error);
   } finally {
     loading.value = false;
   }
+}
+
+function handleTabChange() {
+  handleQuery();
 }
 
 function handleQuery() {

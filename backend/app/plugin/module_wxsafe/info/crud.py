@@ -38,11 +38,40 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
             "涉诈（涉案）时间": "incident_time",
             "涉诈涉案地（城市）": "city",
             "涉诈类型": "fraud_type",
-            "受害人号码": "victim_number"
+            "受害人号码": "victim_number",
+            "入网时间": "join_date",
+            "在网时长（月）": "online_duration",
+            "新装或存量": "install_type",
+            "入网属地": "join_location",
+            "属地或非属地办理": "is_local_handle",
+            "机主名称": "owner_name",
+            "证件地址": "cert_address",
+            "政企或个人": "customer_type",
+            "名下手机号码": "other_phones",
+            "年龄": "age",
+            "代理商": "agent_name",
+            "受理厅店": "store_name",
+            "受理人工号": "staff_id",
+            "受理人": "staff_name",
+            "与涉诈号码同时办理的卡号": "concurrent_cards",
+            "所办理套餐": "package_name",
+            "是否融合套餐": "is_fusion_package",
+            "是否有宽带业务": "has_broadband",
+            "主卡或副卡": "card_type",
+            "是否合规受理": "is_compliant",
+            "涉诈涉案前是否有复通": "has_resume_before",
+            "复通是否规范": "is_resume_compliant",
+            "责任认定": "responsibility",
+            "是否本人或亲属涉诈涉案": "is_self_or_family",
+            "警企协同情况": "police_collab",
+            "调查户主备注": "investigation_note",
+            "异常场景识别": "abnormal_scene",
+            "核查情况反馈": "feedback"
         }
 
         # 检查必要列
-        missing_cols = [col for col in mapping.keys() if col not in df.columns]
+        must_cols = ["线索编号", "业务号码"]
+        missing_cols = [col for col in must_cols if col not in df.columns]
         if missing_cols:
             raise CustomException(msg=f"导入失败，缺少必要列: {', '.join(missing_cols)}")
 

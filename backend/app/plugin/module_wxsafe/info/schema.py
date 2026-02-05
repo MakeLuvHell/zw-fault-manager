@@ -52,10 +52,42 @@ class WxSafeInfoBase(BaseModel):
 
 
 class WxSafeInfoCreate(WxSafeInfoBase):
+
+
     """
+
+
     创建网信安信息
+
+
     """
+
+
     clue_number: str = Field(..., description="线索编号")
+
+
+
+
+
+
+
+
+class WxSafeInfoUpdate(WxSafeInfoBase):
+
+
+    """
+
+
+    更新网信安信息
+
+
+    """
+
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+e_number: str = Field(..., description="线索编号")
 
 
 class WxSafeInfoUpdate(WxSafeInfoBase):

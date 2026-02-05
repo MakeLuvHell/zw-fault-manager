@@ -21,7 +21,7 @@ BEGIN
     -- 3. 插入菜单: 涉诈信息管理
     INSERT INTO sys_menu ("name", "type", "order", "permission", icon, route_name, route_path, component_path, redirect, hidden, keep_alive, always_show, title, affix, parent_id, id, "uuid", status, created_time, updated_time) 
     VALUES (
-        '涉诈信息管理', 2, 1, 'module_wxsafe:info:list', 'list', 'WxSafeInfo', 'info', 'module_wxsafe/info/index', NULL, 
+        '涉诈信息管理', 2, 1, 'module_wxsafe:info:list', 'list', 'WxSafeInfo', '/wxsafe/info', 'module_wxsafe/info/index', NULL, 
         false, true, false, '涉诈信息管理', false, root_id, root_id + 1, gen_random_uuid(), '0', NOW(), NOW()
     );
     
@@ -44,7 +44,7 @@ BEGIN
     -- 5. 插入菜单: 涉诈信息核查
     INSERT INTO sys_menu ("name", "type", "order", "permission", icon, route_name, route_path, component_path, redirect, hidden, keep_alive, always_show, title, affix, parent_id, id, "uuid", status, created_time, updated_time) 
     VALUES (
-        '涉诈信息核查', 2, 2, 'module_wxsafe:investigation:list', 'view', 'WxSafeInvestigation', 'investigation', 'module_wxsafe/investigation/index', NULL, 
+        '涉诈信息核查', 2, 2, 'module_wxsafe:investigation:list', 'view', 'WxSafeInvestigation', '/wxsafe/investigation', 'module_wxsafe/investigation/index', NULL, 
         false, true, false, '涉诈信息核查', false, root_id, wxsafe_menu_id + 4, gen_random_uuid(), '0', NOW(), NOW()
     );
     

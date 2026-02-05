@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
+import calendar
 from app.plugin.module_wxsafe.info.crud import CRUDWxSafe
 from app.plugin.module_wxsafe.info.model import WxSafeInfo
 from app.api.v1.module_system.auth.schema import AuthSchema
@@ -16,26 +18,46 @@ class WxSafeService:
         """
         from app.plugin.module_wxsafe.info.schema import WxSafeInfoInDB
         
-        # 数据隔离逻辑
-        # 如果不是超级管理员，且有部门信息，则只查询本部门属地的数据
-        if not auth.user.is_superuser and auth.user.dept:
-            dept_name = auth.user.dept.name
-            # 这里假设 join_location 存储的是 "广州" 或 "广州市"，而部门名是 "广州分公司" 或 "广州"
-            # 采用前缀匹配逻辑：如果 join_location 包含部门名，或部门名包含 join_location (取交集似匹配比较复杂，这里先用前缀匹配简化)
-            # 业务约定：部门名称通常包含属地名，如 "广州分公司" -> 匹配 "广州%"
-            # 或者数据清洗时已保证 join_location 规范。
-            # 简单策略：WHERE join_location LIKE '{dept_name}%' 
-            # 但实际可能是：dept="广州分公司", data="广州"。所以应该反过来，或者截取。
-            # 更稳妥的方式：假设 dept.name 包含地市名。我们取 dept.name 的前两个字作为 key? 不太安全。
-            # 暂时策略：直接匹配。如果 dept_name="广州分公司"，可能匹配不到 "广州"。
-            # 修正策略：使用包含匹配。 search["join_location"] = ("like", f"{dept_name}%") 
-            # 考虑到实际数据可能是 "广州"，部门是 "广州分公司"，用 like dept_name% 查不出来。
-            # 应该：WHERE join_location LIKE '广州%' (如果部门只有“广州”两个字)
-            # 建议：暂时约定部门名称前两个字作为属地匹配关键字，或者依赖数据完全一致。
-            # 为了演示，假设 dept.name 就是 "广州" 这样的标准地市名。
-            # 如果 auth.user.dept.name 是 "广州分公司"，我们尝试去掉 "分公司" 后匹配
+        # 获取用户权限集合
+        user_permissions = {
+            menu.permission
+            for role in auth.user.roles
+            for menu in role.menus
+            if role.status == "0" and menu.permission and menu.status == "0"
+        }
+
+        # 数据隔离逻辑：
+        # 1. 如果是超级管理员，或者拥有管理岗全量查询权限 (module_wxsafe:info:query)，则不进行过滤
+        # 2. 否则，如果用户有部门信息，则根据部门进行属地前缀匹配
+        if auth.user.is_superuser or "module_wxsafe:info:query" in user_permissions:
+            pass
+        elif auth.user.dept:
             clean_dept_name = auth.user.dept.name.replace("分公司", "").replace("市", "")
             search["join_location"] = ("like", f"{clean_dept_name}%")
+
+        # 兼容性处理：如果搜索条件包含 report_month
+        if "report_month" in search:
+            field_name, val = search.pop("report_month")
+            if val and "-" in val:
+                # 将 YYYY-MM 转换为当月的起始和结束时间戳，查询 incident_time 字段
+                try:
+                    y, m = map(int, val.split("-"))
+                    last_day = calendar.monthrange(y, m)[1]
+                    start_dt = datetime(y, m, 1, 0, 0, 0)
+                    end_dt = datetime(y, m, last_day, 23, 59, 59)
+                    search["incident_time"] = ("between", (start_dt, end_dt))
+                except Exception as e:
+                    print(f"月份解析失败: {e}")
+
+        # 处理状态过滤逻辑 (以 is_compliant 作为核查状态的核心判断字段)
+        if "status" in search:
+            status = search.pop("status")
+            if status == "pending":
+                # 待核查：核心核查字段为空
+                search["is_compliant"] = ("None", None)
+            elif status == "verified":
+                # 已核查：核心核查字段不为空
+                search["is_compliant"] = ("not None", None)
 
         crud = CRUDWxSafe(WxSafeInfo, auth)
         return await crud.page(
@@ -45,6 +67,41 @@ class WxSafeService:
             search=search,
             out_schema=WxSafeInfoInDB
         )
+
+    @classmethod
+    async def get_investigation_counts(cls, auth: AuthSchema):
+        """
+        获取核查任务统计数量
+        """
+        from sqlalchemy import select, func
+        
+        # 基础查询，应用数据隔离
+        base_query = select(func.count(WxSafeInfo.clue_number))
+        
+        user_permissions = {
+            menu.permission
+            for role in auth.user.roles
+            for menu in role.menus
+            if role.status == "0" and menu.permission and menu.status == "0"
+        }
+        
+        if not auth.user.is_superuser and "module_wxsafe:info:query" not in user_permissions:
+            if auth.user.dept:
+                clean_dept_name = auth.user.dept.name.replace("分公司", "").replace("市", "")
+                base_query = base_query.where(WxSafeInfo.join_location.like(f"{clean_dept_name}%"))
+
+        # 计算待核查
+        pending_sql = base_query.where(WxSafeInfo.is_compliant.is_(None))
+        # 计算已核查
+        verified_sql = base_query.where(WxSafeInfo.is_compliant.isnot(None))
+        
+        pending_res = await auth.db.execute(pending_sql)
+        verified_res = await auth.db.execute(verified_sql)
+        
+        return {
+            "pending": pending_res.scalar() or 0,
+            "verified": verified_res.scalar() or 0
+        }
 
     @classmethod
     async def create_wx_safe(cls, auth: AuthSchema, data):
@@ -77,7 +134,14 @@ class WxSafeService:
             if not existing.join_location or clean_dept_name not in existing.join_location:
                  raise CustomException(msg=f"无权操作非本属地 ({existing.join_location}) 的数据")
         
-        return await crud.update(existing, data)
+        # 手动更新对象属性，避开基类 CRUD 对 'id' 字段的依赖
+        obj_dict = data if isinstance(data, dict) else data.model_dump(exclude_unset=True)
+        for key, value in obj_dict.items():
+            if hasattr(existing, key):
+                setattr(existing, key, value)
+        
+        await auth.db.flush()
+        return existing
 
     @classmethod
     async def import_wx_safe(cls, auth: AuthSchema, file_content: bytes):
@@ -86,6 +150,93 @@ class WxSafeService:
         """
         crud = CRUDWxSafe(WxSafeInfo, auth)
         return await crud.import_data(file_content)
+
+    @classmethod
+    async def export_wx_safe(cls, auth: AuthSchema, search: dict):
+        """
+        导出数据
+        """
+        from app.utils.excel_util import ExcelUtil
+        
+        # 1. 执行相同的过滤逻辑
+        user_permissions = {
+            menu.permission
+            for role in auth.user.roles
+            for menu in role.menus
+            if role.status == "0" and menu.permission and menu.status == "0"
+        }
+        if not auth.user.is_superuser and "module_wxsafe:info:query" not in user_permissions:
+            if auth.user.dept:
+                clean_dept_name = auth.user.dept.name.replace("分公司", "").replace("市", "")
+                search["join_location"] = ("like", f"{clean_dept_name}%")
+        
+        # 处理月份过滤
+        if "report_month" in search:
+            field_name, val = search.pop("report_month")
+            if val and "-" in val:
+                try:
+                    y, m = map(int, val.split("-"))
+                    last_day = calendar.monthrange(y, m)[1]
+                    search["incident_time"] = ("between", (datetime(y, m, 1), datetime(y, m, last_day, 23, 59, 59)))
+                except:
+                    pass
+
+        # 2. 查询全量数据 (不分页)
+        crud = CRUDWxSafe(WxSafeInfo, auth)
+        data_list = await crud.list(search=search, order_by=[{"created_time": "desc"}])
+        
+        # 3. 定义字段映射 (英文 -> 中文)
+        mapping_dict = {
+            "clue_number": "线索编号",
+            "category": "涉诈或涉案",
+            "phone_number": "业务号码",
+            "report_month": "月份",
+            "incident_time": "涉诈（涉案）时间",
+            "city": "涉诈涉案地（城市）",
+            "fraud_type": "涉诈类型",
+            "victim_number": "受害人号码",
+            "join_date": "入网时间",
+            "online_duration": "在网时长（月）",
+            "install_type": "新装或存量",
+            "join_location": "入网属地",
+            "is_local_handle": "属地或非属地办理",
+            "owner_name": "机主名称",
+            "cert_address": "证件地址",
+            "customer_type": "政企或个人",
+            "other_phones": "名下手机号码",
+            "age": "年龄",
+            "agent_name": "代理商",
+            "store_name": "受理厅店",
+            "staff_id": "受理人工号",
+            "staff_name": "受理人",
+            "concurrent_cards": "与涉诈号码同时办理的卡号",
+            "package_name": "所办理套餐",
+            "is_fusion_package": "是否融合套餐",
+            "has_broadband": "是否有宽带业务",
+            "card_type": "主卡或副卡",
+            "is_compliant": "是否合规受理",
+            "has_resume_before": "涉诈涉案前是否有复通",
+            "is_resume_compliant": "复通是否规范",
+            "responsibility": "责任认定",
+            "is_self_or_family": "是否本人或亲属涉诈涉案",
+            "police_collab": "警企协同情况",
+            "investigation_note": "调查户主备注",
+            "abnormal_scene": "异常场景识别",
+            "feedback": "核查情况反馈"
+        }
+        
+        # 4. 转换数据为字典列表
+        list_data = []
+        for obj in data_list:
+            item = {}
+            for col in mapping_dict.keys():
+                val = getattr(obj, col, "")
+                if isinstance(val, datetime):
+                    val = val.strftime("%Y-%m-%d %H:%M:%S")
+                item[col] = val if val is not None else ""
+            list_data.append(item)
+            
+        return ExcelUtil.export_list2excel(list_data, mapping_dict)
 
     @classmethod
     async def get_template(cls):

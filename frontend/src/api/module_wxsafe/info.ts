@@ -12,6 +12,27 @@ export function listWxSafeInfo(query: any) {
 }
 
 /**
+ * 获取核查任务列表 (带属地过滤)
+ */
+export function listWxSafeInvestigation(query: any) {
+  return request({
+    url: '/wxsafe/info/investigation/list',
+    method: 'get',
+    params: query
+  });
+}
+
+/**
+ * 获取核查任务统计数量
+ */
+export function getWxSafeInvestigationCounts() {
+  return request({
+    url: '/wxsafe/info/investigation/counts',
+    method: 'get'
+  });
+}
+
+/**
  * 单条录入涉诈信息
  */
 export function addWxSafeInfo(data: any) {
@@ -54,6 +75,18 @@ export function downloadWxSafeTemplate() {
   return request({
     url: '/wxsafe/info/template',
     method: 'get',
+    responseType: 'blob'
+  });
+}
+
+/**
+ * 导出涉诈信息
+ */
+export function exportWxSafeInfo(query: any) {
+  return request({
+    url: '/wxsafe/info/export',
+    method: 'post',
+    params: query,
     responseType: 'blob'
   });
 }
