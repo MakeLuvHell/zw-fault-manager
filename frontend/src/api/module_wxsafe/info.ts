@@ -37,6 +37,17 @@ export function importWxSafeInfo(data: FormData) {
 }
 
 /**
+ * 核查信息补录
+ */
+export function updateWxSafeInvestigation(clue_number: string, data: any) {
+  return request({
+    url: `/wxsafe/info/investigation/${clue_number}`,
+    method: 'put',
+    data: data
+  });
+}
+
+/**
  * 下载导入模板
  */
 export function downloadWxSafeTemplate() {

@@ -65,6 +65,21 @@ class WxSafeInfoUpdate(WxSafeInfoBase):
     pass
 
 
+class WxSafeInfoInvestigationUpdate(BaseModel):
+    """
+    涉诈信息核查更新 (9个字段)
+    """
+    is_compliant: str | None = Field(None, description="是否合规受理")
+    has_resume_before: str | None = Field(None, description="涉诈涉案前是否有复通")
+    is_resume_compliant: str | None = Field(None, description="复通是否规范")
+    responsibility: str | None = Field(None, description="责任认定")
+    is_self_or_family: str | None = Field(None, description="是否本人或亲属涉诈涉案")
+    police_collab: str | None = Field(None, description="警企协同情况")
+    investigation_note: str | None = Field(None, description="调查户主备注")
+    abnormal_scene: str | None = Field(None, description="异常场景识别")
+    feedback: str | None = Field(None, description="核查情况反馈")
+
+
 class WxSafeInfoInDB(WxSafeInfoBase):
     """
     数据库中的网信安信息 (Output Schema)

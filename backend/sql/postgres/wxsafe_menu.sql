@@ -41,5 +41,26 @@ BEGIN
     INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
     VALUES ('导入', 3, 3, 'module_wxsafe:info:import', wxsafe_menu_id, wxsafe_menu_id + 3, gen_random_uuid(), '0', '导入', false, true, false, false, NOW(), NOW());
 
+    -- 5. 插入菜单: 涉诈信息核查
+    INSERT INTO sys_menu ("name", "type", "order", "permission", icon, route_name, route_path, component_path, redirect, hidden, keep_alive, always_show, title, affix, parent_id, id, "uuid", status, created_time, updated_time) 
+    VALUES (
+        '涉诈信息核查', 2, 2, 'module_wxsafe:investigation:list', 'view', 'WxSafeInvestigation', 'investigation', 'module_wxsafe/investigation/index', NULL, 
+        false, true, false, '涉诈信息核查', false, root_id, wxsafe_menu_id + 4, gen_random_uuid(), '0', NOW(), NOW()
+    );
+    
+    DECLARE
+        investigation_menu_id INT;
+    BEGIN
+        investigation_menu_id := wxsafe_menu_id + 4;
+        
+        -- 查询
+        INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+        VALUES ('查询', 3, 1, 'module_wxsafe:investigation:query', investigation_menu_id, investigation_menu_id + 1, gen_random_uuid(), '0', '查询', false, true, false, false, NOW(), NOW());
+        
+        -- 核查
+        INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+        VALUES ('核查', 3, 2, 'module_wxsafe:investigation:update', investigation_menu_id, investigation_menu_id + 2, gen_random_uuid(), '0', '核查', false, true, false, false, NOW(), NOW());
+    END;
+
     RAISE NOTICE '网信安模块初始化成功！';
 END $$;

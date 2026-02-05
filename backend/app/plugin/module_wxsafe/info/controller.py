@@ -4,7 +4,7 @@ from fastapi.responses import Response
 from app.api.v1.module_system.auth.schema import AuthSchema
 from app.core.dependencies import get_current_user
 from app.plugin.module_wxsafe.info.service import WxSafeService
-from app.plugin.module_wxsafe.info.schema import WxSafeInfoCreate, WxSafeImportResponse
+from app.plugin.module_wxsafe.info.schema import WxSafeInfoCreate, WxSafeImportResponse, WxSafeInfoInvestigationUpdate
 from app.common.response import SuccessResponse, ResponseSchema
 
 router = APIRouter(prefix="/info", tags=["网信安涉诈信息管理"])
@@ -43,6 +43,15 @@ async def create(
 ):
     result = await WxSafeService.create_wx_safe(auth, data)
     return SuccessResponse(data={"clue_number": result.clue_number})
+
+@router.put("/investigation/{clue_number}", summary="核查信息补录")
+async def update_investigation(
+    clue_number: str,
+    data: WxSafeInfoInvestigationUpdate,
+    auth: AuthSchema = Depends(get_current_user)
+):
+    await WxSafeService.update_wx_safe_investigation(auth, clue_number, data)
+    return SuccessResponse(msg="核查信息保存成功")
 
 @router.post("/import", summary="批量导入涉诈信息", response_model=ResponseSchema)
 async def import_data(
