@@ -19,6 +19,50 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
     """
     网信安涉诈信息数据操作层
     """
+
+    async def create(self, data: WxSafeInfoCreate | dict) -> WxSafeInfo:
+        """
+        重写创建方法，处理主附表
+        """
+        from app.plugin.module_wxsafe.info.model import WxSafeDetail
+        obj_dict = data if isinstance(data, dict) else data.model_dump()
+        
+        # 1. 提取字段
+        master_fields = [
+            "clue_number", "category", "phone_number", "report_month", 
+            "incident_time", "city", "fraud_type", "victim_number",
+            "is_compliant", "has_resume_before", 
+            "is_resume_compliant", "responsibility", "is_self_or_family", 
+            "police_collab", "investigation_note", "abnormal_scene", "feedback"
+        ]
+        detail_fields = [
+            "join_date", "online_duration", "install_type", "join_location",
+            "is_local_handle", "owner_name", "cert_address", "customer_type", 
+            "other_phones", "age", "agent_name", "store_name", "staff_id", 
+            "staff_name", "concurrent_cards", "package_name", "is_fusion_package", 
+            "has_broadband", "card_type"
+        ]
+        
+        master_data = {k: v for k, v in obj_dict.items() if k in master_fields}
+        detail_data = {k: v for k, v in obj_dict.items() if k in detail_fields}
+        
+        # 2. 创建主表对象
+        obj = self.model(**master_data)
+        if self.auth.user:
+            if hasattr(obj, "created_id"): setattr(obj, "created_id", self.auth.user.id)
+            if hasattr(obj, "updated_id"): setattr(obj, "updated_id", self.auth.user.id)
+        
+        self.auth.db.add(obj)
+        
+        # 3. 创建附表对象
+        detail_data["clue_number"] = obj_dict["clue_number"]
+        detail_data["phone_number"] = obj_dict["phone_number"]
+        detail_obj = WxSafeDetail(**detail_data)
+        self.auth.db.add(detail_obj)
+        
+        await self.auth.db.flush()
+        await self.auth.db.refresh(obj)
+        return obj
     
     async def import_data(self, file_content: bytes) -> WxSafeImportResponse:
         """
@@ -29,7 +73,7 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
         except Exception as e:
             raise CustomException(msg=f"Excel 文件解析失败: {e!s}")
 
-        # 字段映射 (中文 -> 英文)
+        # 字段映射 (中文 -> 英文) - 仅保留 8 个核心字段
         mapping = {
             "线索编号": "clue_number",
             "涉诈或涉案": "category",
@@ -38,40 +82,12 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
             "涉诈（涉案）时间": "incident_time",
             "涉诈涉案地（城市）": "city",
             "涉诈类型": "fraud_type",
-            "受害人号码": "victim_number",
-            "入网时间": "join_date",
-            "在网时长（月）": "online_duration",
-            "新装或存量": "install_type",
-            "入网属地": "join_location",
-            "属地或非属地办理": "is_local_handle",
-            "机主名称": "owner_name",
-            "证件地址": "cert_address",
-            "政企或个人": "customer_type",
-            "名下手机号码": "other_phones",
-            "年龄": "age",
-            "代理商": "agent_name",
-            "受理厅店": "store_name",
-            "受理人工号": "staff_id",
-            "受理人": "staff_name",
-            "与涉诈号码同时办理的卡号": "concurrent_cards",
-            "所办理套餐": "package_name",
-            "是否融合套餐": "is_fusion_package",
-            "是否有宽带业务": "has_broadband",
-            "主卡或副卡": "card_type",
-            "是否合规受理": "is_compliant",
-            "涉诈涉案前是否有复通": "has_resume_before",
-            "复通是否规范": "is_resume_compliant",
-            "责任认定": "responsibility",
-            "是否本人或亲属涉诈涉案": "is_self_or_family",
-            "警企协同情况": "police_collab",
-            "调查户主备注": "investigation_note",
-            "异常场景识别": "abnormal_scene",
-            "核查情况反馈": "feedback"
+            "受害人号码": "victim_number"
         }
 
         # 检查必要列
         must_cols = ["线索编号", "业务号码"]
-        missing_cols = [col for col in must_cols if col not in df.columns]
+        missing_cols = [col for col in mapping.keys() if col not in df.columns]
         if missing_cols:
             raise CustomException(msg=f"导入失败，缺少必要列: {', '.join(missing_cols)}")
 

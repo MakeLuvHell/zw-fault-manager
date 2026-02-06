@@ -1,26 +1,24 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from pydantic import Field, ConfigDict, BaseModel
+from pydantic import Field, ConfigDict, BaseModel, model_validator
 from app.core.validator import Telephone, DateTimeStr
 
 
 class WxSafeInfoBase(BaseModel):
     """
     网信安信息基础 Schema
-    用于定义字段名和基础类型（Python 原生类型）
     """
     model_config = ConfigDict(from_attributes=True)
     
     category: str | None = Field(None, description="涉诈或涉案")
     phone_number: Telephone = Field(..., description="业务号码")
     report_month: str | None = Field(None, description="月份")
-    # Input 使用 datetime，Pydantic 会自动尝试解析字符串
     incident_time: datetime | None = Field(None, description="涉诈（涉案）时间")
     city: str | None = Field(None, description="涉诈涉案地（城市）")
     fraud_type: str | None = Field(None, description="涉诈类型")
     victim_number: str | None = Field(None, description="受害人号码")
     
-    # 后续字段
+    # 业务画像字段 (位于附表，但在 Base 中定义以便统一展示)
     join_date: datetime | None = Field(None, description="入网时间")
     online_duration: int | None = Field(None, description="在网时长（月）")
     install_type: str | None = Field(None, description="新装或存量")
@@ -40,6 +38,8 @@ class WxSafeInfoBase(BaseModel):
     is_fusion_package: str | None = Field(None, description="是否融合套餐")
     has_broadband: str | None = Field(None, description="是否有宽带业务")
     card_type: str | None = Field(None, description="主卡或副卡")
+
+    # 核查字段 (位于主表)
     is_compliant: str | None = Field(None, description="是否合规受理")
     has_resume_before: str | None = Field(None, description="涉诈涉案前是否有复通")
     is_resume_compliant: str | None = Field(None, description="复通是否规范")
@@ -52,42 +52,10 @@ class WxSafeInfoBase(BaseModel):
 
 
 class WxSafeInfoCreate(WxSafeInfoBase):
-
-
     """
-
-
     创建网信安信息
-
-
     """
-
-
     clue_number: str = Field(..., description="线索编号")
-
-
-
-
-
-
-
-
-class WxSafeInfoUpdate(WxSafeInfoBase):
-
-
-    """
-
-
-    更新网信安信息
-
-
-    """
-
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-e_number: str = Field(..., description="线索编号")
 
 
 class WxSafeInfoUpdate(WxSafeInfoBase):
@@ -115,7 +83,7 @@ class WxSafeInfoInvestigationUpdate(BaseModel):
 class WxSafeInfoInDB(WxSafeInfoBase):
     """
     数据库中的网信安信息 (Output Schema)
-    覆写时间字段为 DateTimeStr 以便 JSON 序列化
+    使用 model_validator 处理跨表字段展平
     """
     clue_number: str
     incident_time: DateTimeStr | None = None
@@ -123,6 +91,33 @@ class WxSafeInfoInDB(WxSafeInfoBase):
     
     created_time: DateTimeStr
     updated_time: DateTimeStr
+
+    @model_validator(mode="before")
+    @classmethod
+    def flatten_detail(cls, data: any) -> any:
+        # 如果是 SQLAlchemy 对象且有 detail 属性
+        if hasattr(data, "detail") and data.detail:
+            # 将 detail 中的字段提取到主对象层级
+            detail_obj = data.detail
+            # 这里我们不直接修改 data 对象（因为它是只读的或 ORM 对象）
+            # 而是返回一个包含合并后数据的字典
+            result = {c.name: getattr(data, c.name) for c in data.__table__.columns}
+            # 补充 detail 表的字段
+            detail_fields = [
+                "join_date", "online_duration", "install_type", "join_location", 
+                "is_local_handle", "owner_name", "cert_address", "customer_type", 
+                "other_phones", "age", "agent_name", "store_name", "staff_id", 
+                "staff_name", "concurrent_cards", "package_name", "is_fusion_package", 
+                "has_broadband", "card_type"
+            ]
+            for field in detail_fields:
+                result[field] = getattr(detail_obj, field, None)
+            
+            # 补充审计字段
+            result["created_time"] = data.created_time
+            result["updated_time"] = data.updated_time
+            return result
+        return data
 
 
 class ImportResultDetail(BaseModel):

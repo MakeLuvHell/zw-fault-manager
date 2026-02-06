@@ -9,6 +9,19 @@
         <el-form-item label="业务号码" prop="phone_number">
           <el-input v-model="queryParams.phone_number" placeholder="请输入业务号码" clearable @keyup.enter="handleQuery" />
         </el-form-item>
+        <el-form-item label="入网属地" prop="join_location">
+          <el-input v-model="queryParams.join_location" placeholder="请输入入网属地" clearable @keyup.enter="handleQuery" />
+        </el-form-item>
+        <el-form-item label="涉诈时间" prop="report_month">
+          <el-date-picker
+            v-model="queryParams.report_month"
+            type="month"
+            placeholder="选择月份"
+            value-format="YYYY-MM"
+            style="width: 150px"
+            @change="handleQuery"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
           <el-button icon="refresh" @click="resetQuery">重置</el-button>
@@ -106,6 +119,8 @@ const queryParams = reactive({
   page_size: 10,
   clue_number: '',
   phone_number: '',
+  join_location: '',
+  report_month: '',
   status: 'pending'
 });
 
@@ -148,6 +163,8 @@ function handleQuery() {
 function resetQuery() {
   queryParams.clue_number = '';
   queryParams.phone_number = '';
+  queryParams.join_location = '';
+  queryParams.report_month = '';
   handleQuery();
 }
 
