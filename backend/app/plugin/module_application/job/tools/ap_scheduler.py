@@ -97,7 +97,12 @@ class SchedulerUtil:
                 status = "1"
 
             if hasattr(event, "job_id"):
-                job_id = event.job_id
+                job_id = str(event.job_id)
+
+                # 过滤外呼任务：不记录调度日志，避免数据库类型冲突和外键限制
+                if job_id.startswith("calling_task_"):
+                    return
+
                 query_job = cls.get_job(job_id=job_id)
 
                 if query_job:

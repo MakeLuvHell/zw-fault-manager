@@ -42,9 +42,9 @@ class JobModel(ModelMixin, UserMixin):
     end_date: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="结束时间")
 
     # 关联关系
-    # job_logs: Mapped[list["JobLogModel"] | None] = relationship(
-    #     back_populates="job", lazy="selectin"
-    # )
+    job_logs: Mapped[list["JobLogModel"] | None] = relationship(
+        back_populates="job", lazy="selectin"
+    )
 
 
 class JobLogModel(ModelMixin):
@@ -79,15 +79,8 @@ class JobLogModel(ModelMixin):
     )
 
     # 任务关联
-    job_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True, comment="任务ID"
+    job_id: Mapped[int | None] = mapped_column(
+        ForeignKey("app_job.id", ondelete="CASCADE"), nullable=True, index=True, comment="任务ID"
     )
 
-    # 由于移除了外键，这里使用 primaryjoin 进行逻辑关联，或者直接移除 relationship
-    # 为了兼容现有代码，尝试保留逻辑关联（如果 SQLAlchemy 支持无外键关联），
-    # 但通常跨类型关联（Int vs String）比较麻烦。
-    # 考虑到日志主要是记录，且 app_job 可能不存在对应记录（外呼任务），
-    # 最好是将 job 属性改为可选，或者暂时移除 relationship 如果没有代码强依赖它。
-    # 检查代码发现 ap_scheduler.py 中并没有用到 log.job 属性。
-    # 稳妥起见，我们移除 relationship，避免 ORM 查询错误。
-
+    job: Mapped["JobModel | None"] = relationship(back_populates="job_logs", lazy="selectin")
