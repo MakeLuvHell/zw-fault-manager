@@ -469,7 +469,7 @@ class CallingCleanupService:
     @classmethod
     async def refresh_job(cls, redis: Redis, config: dict = None):
         """刷新调度任务"""
-        from app.plugin.module_application.job.tools.ap_scheduler import scheduler
+        from app.plugin.module_application.job.tools.ap_scheduler import scheduler, SchedulerUtil
         
         if config is None:
             config = await cls.get_config_service(redis)
@@ -485,8 +485,8 @@ class CallingCleanupService:
                 cron_parts = config.get("cron_expr", "0 0 0 * * *").split()
                 if len(cron_parts) >= 5:
                     scheduler.add_job(
-                        cls.execute_cleanup,
-                        CronTrigger(
+                        func=SchedulerUtil._task_wrapper,
+                        trigger=CronTrigger(
                             second=cron_parts[0] if len(cron_parts) > 5 else '0',
                             minute=cron_parts[1] if len(cron_parts) > 5 else cron_parts[0],
                             hour=cron_parts[2] if len(cron_parts) > 5 else cron_parts[1],
@@ -494,9 +494,13 @@ class CallingCleanupService:
                             month=cron_parts[4] if len(cron_parts) > 5 else cron_parts[3],
                             day_of_week=cron_parts[5] if len(cron_parts) > 5 else cron_parts[4],
                         ),
+                        args=[cls.execute_cleanup, cls.JOB_ID],
                         id=cls.JOB_ID,
-                        replace_existing=True
+                        name="历史记录清理任务",
+                        jobstore="redis",
+                        replace_existing=True,
+                        misfire_grace_time=60
                     )
-                    log.info(f"已添加清理调度任务: {cls.JOB_ID}, Cron: {config['cron_expr']}")
+                    log.info(f"任务 {cls.JOB_ID} 添加到 redis 存储器成功")
             except Exception as e:
                 log.error(f"添加清理调度任务失败: {e}")

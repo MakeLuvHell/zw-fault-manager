@@ -367,6 +367,15 @@ class CallingSchedulerService:
         from app.plugin.module_application.job.tools.ap_scheduler import scheduler
         
         log.info("🔎 开始初始化外呼任务调度...")
+
+        # 初始化历史记录清理任务（移动到此处，确保优先初始化）
+        try:
+            from .api_service import CallingCleanupService
+            # 从 Redis 加载配置并注册任务
+            await CallingCleanupService.refresh_job(redis)
+            log.info("✅ 历史记录清理任务初始化完成")
+        except Exception as e:
+            log.error(f"初始化历史记录清理任务失败: {e}")
         
         # 读取所有已启用的任务配置
         async with async_db_session() as db:
@@ -390,6 +399,7 @@ class CallingSchedulerService:
                 log.error(f"注册外呼任务失败 [{config.name}]: {e}")
         
         log.info(f"✅ 外呼任务调度初始化完成，已注册 {registered_count} 个任务")
+
     
     @classmethod
     def add_job(cls, task_config: CallingTaskConfig, redis: Redis) -> None:

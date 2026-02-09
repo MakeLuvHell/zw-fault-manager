@@ -1,0 +1,384 @@
+app:
+  description: 根据报表标题分析数据，生成100字以内的简报
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 百色报表推送数据分析流
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: package
+  value:
+    plugin_unique_identifier: langgenius/gpustack:0.0.8@8fe1abce0914a80dab12caa46da58a5378ae2d214087d65340cbc4111ed669c5
+    version: null
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start_to_preprocessing
+      source: start
+      sourceHandle: source
+      target: preprocessing
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: preprocessing_to_llm
+      source: preprocessing
+      sourceHandle: source
+      target: llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: llm_to_validation
+      source: llm
+      sourceHandle: source
+      target: validation
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: validation_to_end
+      source: validation
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: AI分析关注点
+          max_length: 200
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: AI_ANALYSIS_FOCUS
+        - default: '[]'
+          hint: ''
+          label: 报表数据
+          max_length: 50000
+          options: []
+          placeholder: ''
+          required: true
+          type: paragraph
+          variable: report_data
+        - default: '200'
+          hint: ''
+          label: 最大字数限制
+          max_length: 10
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: MAX_WORDS
+      height: 161
+      id: start
+      position:
+        x: 78.48428343348957
+        y: 282
+      positionAbsolute:
+        x: 78.48428343348957
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef main(AI_ANALYSIS_FOCUS: str, report_data: str, MAX_WORDS:\
+          \ str) -> dict:\n    # Parse JSON string to list\n    try:\n        data_list\
+          \ = json.loads(report_data)\n    except:\n        data_list = []\n    \n\
+          \    # Convert JSON data to readable text format\n    data_text = \"\"\n\
+          \    for item in data_list:\n        for key, value in item.items():\n \
+          \           data_text += f\"{key}: {value}\\n\"\n        data_text += \"\
+          ---\\n\"\n    \n    return {\n        \"formatted_data\": data_text,\n \
+          \       \"AI_ANALYSIS_FOCUS\": AI_ANALYSIS_FOCUS,\n        \"MAX_WORDS\"\
+          : MAX_WORDS\n    }"
+        code_language: python3
+        description: ''
+        outputs:
+          AI_ANALYSIS_FOCUS:
+            type: string
+            variable: AI_ANALYSIS_FOCUS
+          MAX_WORDS:
+            type: string
+            variable: MAX_WORDS
+          formatted_data:
+            type: string
+            variable: formatted_data
+        selected: false
+        title: 数据预处理
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - AI_ANALYSIS_FOCUS
+          variable: AI_ANALYSIS_FOCUS
+        - value_selector:
+          - start
+          - report_data
+          variable: report_data
+        - value_selector:
+          - start
+          - MAX_WORDS
+          variable: MAX_WORDS
+        version: '2'
+      height: 52
+      id: preprocessing
+      position:
+        x: 382
+        y: 282
+      positionAbsolute:
+        x: 382
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        description: ''
+        memory:
+          enabled: false
+          role_prefix:
+            assistant: ''
+            user: ''
+          roles:
+            assistant: ''
+            system: ''
+            user: ''
+          window:
+            enabled: false
+            size: 6
+        model:
+          completion_params:
+            frequency_penalty: 0
+            max_tokens: 200
+            presence_penalty: 0
+            temperature: 0.7
+            top_p: 1
+          mode: chat
+          name: qwen3-235b-a22b-instruct-2507
+          provider: langgenius/gpustack/gpustack
+        prompt_template:
+        - id: system
+          role: system
+          text: '你是一个专业的数据分析专家。你的任务是根据分析关注点分析提供的数据，生成一份简明扼要的分析简报。
+
+
+            要求：
+
+            1. 严格控制在{{#preprocessing.MAX_WORDS#}}字以内
+
+            2. 重点突出数据的优点和亮点
+
+            3. 点出需要加强或改进的方面
+
+            4. 语言简洁、专业、客观
+
+            5. 避免使用过于技术化的术语
+
+            6. 在做数据引用时务必要保证精准，并且保证有数据来源
+
+
+            输出格式：
+
+            直接输出分析结果，不要包含关注点标题。例如："数据显示核心指标增长强劲，但某些方面需要关注。"'
+        - id: user
+          jinja2_text: '分析关注点：{{#preprocessing.AI_ANALYSIS_FOCUS#}}
+
+
+            数据内容：
+
+            {{#preprocessing.formatted_data#}}
+
+
+            请根据以上关注点和数据，生成{{#preprocessing.MAX_WORDS#}}字以内的分析简报。'
+          role: user
+          text: '分析关注点：{{#preprocessing.AI_ANALYSIS_FOCUS#}}
+
+
+            数据内容：
+
+            {{#preprocessing.formatted_data#}}
+
+
+            请根据以上关注点和数据，生成{{#preprocessing.MAX_WORDS#}}字以内的分析简报。'
+          variables:
+          - variable_selector:
+            - preprocessing
+            - AI_ANALYSIS_FOCUS
+          - variable_selector:
+            - preprocessing
+            - formatted_data
+          - variable_selector:
+            - preprocessing
+            - MAX_WORDS
+        selected: true
+        title: LLM分析
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: llm
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "def main(analysis_result: str, MAX_WORDS: str) -> dict:\n    # Validate\
+          \ word count and format\n    result = analysis_result.strip()\n    \n  \
+          \  # Convert MAX_WORDS to integer\n    try:\n        max_words = int(MAX_WORDS)\n\
+          \    except:\n        max_words = 200\n    \n    # Check word count (within\
+          \ MAX_WORDS)\n    if len(result) > max_words:\n        result = result[:max_words-3]\
+          \ + \"...\"\n    \n    return {\n        \"final_analysis\": result,\n \
+          \       \"word_count\": len(result)\n    }"
+        code_language: python3
+        description: ''
+        outputs:
+          final_analysis:
+            type: string
+            variable: final_analysis
+          word_count:
+            type: number
+            variable: word_count
+        selected: false
+        title: 输出验证
+        type: code
+        variables:
+        - value_selector:
+          - llm
+          - text
+          variable: analysis_result
+        - value_selector:
+          - preprocessing
+          - MAX_WORDS
+          variable: MAX_WORDS
+        version: '2'
+      height: 52
+      id: validation
+      position:
+        x: 986
+        y: 282
+      positionAbsolute:
+        x: 986
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        outputs:
+        - value_selector:
+          - validation
+          - final_analysis
+          variable: analysis
+        - value_selector:
+          - validation
+          - word_count
+          variable: word_count
+        selected: false
+        title: 结束
+        type: end
+      height: 114
+      id: end
+      position:
+        x: 1288
+        y: 282
+      positionAbsolute:
+        x: 1288
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: 230.78373997231824
+      y: 238.53778498358952
+      zoom: 0.6597539553864471
+  rag_pipeline_variables: []
