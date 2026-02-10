@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from app.plugin.module_wxsafe.info.crud import CRUDWxSafe
 from app.plugin.module_wxsafe.info.model import WxSafeInfo, WxSafeDetail
 from app.api.v1.module_system.auth.schema import AuthSchema
-from app.plugin.module_wxsafe.info.schema import WxSafeInfoInDB
+from app.plugin.module_wxsafe.info.schema import WxSafeInfoInDB, WxSafeLogOut
 
 
 class WxSafeService:
@@ -14,6 +14,45 @@ class WxSafeService:
     网信安涉诈信息服务层
     """
     
+    @classmethod
+    def _calculate_diff(cls, old_obj, new_data: dict) -> dict:
+        """
+        计算字段差异
+        返回格式: { "field_name": [old_value, new_value] }
+        """
+        diff = {}
+        # 仅对比主表字段 (WxSafeInfo)
+        for key, new_val in new_data.items():
+            if hasattr(old_obj, key):
+                old_val = getattr(old_obj, key)
+                # 处理 None 和 空字符串的等价性 (可选)
+                if old_val != new_val:
+                    # 格式化日期时间以防 JSON 序列化问题
+                    if isinstance(old_val, datetime):
+                        old_val = old_val.strftime("%Y-%m-%d %H:%M:%S")
+                    if isinstance(new_val, datetime):
+                        new_val = new_val.strftime("%Y-%m-%d %H:%M:%S")
+                    diff[key] = [old_val, new_val]
+        return diff
+
+    @classmethod
+    async def _record_audit_log(cls, auth: AuthSchema, clue_number: str, diff: dict, action: str = "UPDATE"):
+        """
+        保存审计日志
+        """
+        if not diff:
+            return
+            
+        from app.plugin.module_wxsafe.info.model import WxSafeLog
+        log_obj = WxSafeLog(
+            clue_number=clue_number,
+            operator_id=str(auth.user.id) if auth.user else None,
+            operator_name=auth.user.name if auth.user else "系统",
+            action_type=action,
+            change_diff=diff
+        )
+        auth.db.add(log_obj)
+
     @classmethod
     async def get_wx_safe_list(cls, auth: AuthSchema, offset: int, limit: int, search: dict):
         """
@@ -81,12 +120,28 @@ class WxSafeService:
         )
         objs = result.scalars().all()
 
+        items = []
+        for obj in objs:
+            data = WxSafeInfoInDB.model_validate(obj).model_dump()
+            # 如果是已核查记录，额外查一下最新的操作人
+            # (注：为了性能，在大数据量下建议使用 SQL JOIN 或窗口函数，这里在 10-20 条的分页规模下采用简单查询)
+            if obj.is_compliant:
+                from app.plugin.module_wxsafe.info.model import WxSafeLog
+                log_stmt = select(WxSafeLog.operator_name).where(
+                    WxSafeLog.clue_number == obj.clue_number
+                ).order_by(WxSafeLog.created_time.desc()).limit(1)
+                log_res = await auth.db.execute(log_stmt)
+                data["latest_operator"] = log_res.scalar() or "-"
+            else:
+                data["latest_operator"] = "-"
+            items.append(data)
+
         return {
             "page_no": offset // limit + 1 if limit else 1,
             "page_size": limit or 10,
             "total": total,
             "has_next": offset + limit < total,
-            "items": [WxSafeInfoInDB.model_validate(obj).model_dump() for obj in objs],
+            "items": items,
         }
 
     @classmethod
@@ -152,14 +207,31 @@ class WxSafeService:
             if not existing.detail or not existing.detail.join_location or clean_dept_name not in existing.detail.join_location:
                  raise CustomException(msg=f"无权操作非本属地的数据")
         
-        # 手动更新主表属性
+        # 1. 计算差异
         obj_dict = data if isinstance(data, dict) else data.model_dump(exclude_unset=True)
+        diff = cls._calculate_diff(existing, obj_dict)
+        
+        # 2. 手动更新主表属性
         for key, value in obj_dict.items():
             if hasattr(existing, key):
                 setattr(existing, key, value)
         
+        # 3. 记录日志
+        await cls._record_audit_log(auth, clue_number, diff)
+        
         await auth.db.flush()
         return existing
+
+    @classmethod
+    async def get_wx_safe_logs(cls, auth: AuthSchema, clue_number: str):
+        """
+        获取操作日志列表
+        """
+        from app.plugin.module_wxsafe.info.model import WxSafeLog
+        stmt = select(WxSafeLog).where(WxSafeLog.clue_number == clue_number).order_by(WxSafeLog.created_time.desc())
+        result = await auth.db.execute(stmt)
+        objs = result.scalars().all()
+        return [WxSafeLogOut.model_validate(obj).model_dump() for obj in objs]
 
     @classmethod
     async def import_wx_safe(cls, auth: AuthSchema, file_content: bytes):

@@ -94,6 +94,14 @@ async def update_investigation(
     await WxSafeService.update_wx_safe_investigation(auth, clue_number, data)
     return SuccessResponse(msg="核查信息保存成功")
 
+@router.get("/logs/{clue_number}", summary="获取操作日志历史")
+async def get_logs(
+    clue_number: str,
+    auth: AuthSchema = Depends(AuthPermission(["module_wxsafe:investigation:query"]))
+):
+    result = await WxSafeService.get_wx_safe_logs(auth, clue_number)
+    return SuccessResponse(data=result)
+
 @router.post("/import", summary="批量导入涉诈信息", response_model=ResponseSchema)
 
 async def import_data(

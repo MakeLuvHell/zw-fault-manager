@@ -60,6 +60,10 @@ BEGIN
         -- 核查
         INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
         VALUES ('核查', 3, 2, 'module_wxsafe:investigation:update', investigation_menu_id, investigation_menu_id + 2, gen_random_uuid(), '0', '核查', false, true, false, false, NOW(), NOW());
+
+        -- 日志
+        INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+        VALUES ('日志', 3, 3, 'module_wxsafe:investigation:log', investigation_menu_id, investigation_menu_id + 3, gen_random_uuid(), '0', '日志', false, true, false, false, NOW(), NOW());
     END;
 
     RAISE NOTICE '网信安模块初始化成功！';

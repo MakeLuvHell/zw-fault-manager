@@ -69,6 +69,16 @@ export function updateWxSafeInvestigation(clue_number: string, data: any) {
 }
 
 /**
+ * 获取操作日志列表
+ */
+export function listWxSafeLogs(clue_number: string) {
+  return request({
+    url: `/wxsafe/info/logs/${clue_number}`,
+    method: 'get'
+  });
+}
+
+/**
  * 下载导入模板
  */
 export function downloadWxSafeTemplate() {

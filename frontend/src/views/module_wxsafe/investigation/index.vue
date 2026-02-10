@@ -73,6 +73,11 @@
         
         <!-- 已核查视图特有列 -->
         <template v-else>
+          <el-table-column label="核查人员" align="center" width="120">
+            <template #default="scope">
+              <span>{{ scope.row.latest_operator || '-' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="核查反馈" align="center" prop="feedback" show-overflow-tooltip />
           <el-table-column label="更新时间" align="center" prop="updated_time" width="170" />
         </template>

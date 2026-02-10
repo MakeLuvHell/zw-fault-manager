@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, BigInteger, JSON
 from sqlalchemy.orm import Mapped, mapped_column, declared_attr, relationship
 
 from app.core.base_model import MappedBase
@@ -57,6 +57,23 @@ class WxSafeInfo(WxSafeBase):
         back_populates="master", 
         uselist=False, 
         cascade="all, delete-orphan"
+    )
+
+
+class WxSafeLog(WxSafeBase):
+    """
+    网信安涉诈信息操作日志表
+    """
+    __tablename__ = "wxsafe_fz_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    clue_number: Mapped[str] = mapped_column(String(100), index=True, nullable=False, comment="关联线索编号")
+    operator_id: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="操作人ID")
+    operator_name: Mapped[str | None] = mapped_column(String(100), nullable=True, comment="操作人姓名")
+    action_type: Mapped[str] = mapped_column(String(20), default="UPDATE", comment="操作类型")
+    change_diff: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="变更差异快照")
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, nullable=False, comment="操作时间"
     )
 
 

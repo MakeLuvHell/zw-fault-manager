@@ -120,6 +120,20 @@ class WxSafeInfoInDB(WxSafeInfoBase):
         return data
 
 
+class WxSafeLogOut(BaseModel):
+    """
+    操作日志输出 Schema
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    clue_number: str
+    operator_name: str | None = None
+    action_type: str
+    change_diff: dict | None = None
+    created_time: DateTimeStr
+
+
 class ImportResultDetail(BaseModel):
     """
     导入结果详情
