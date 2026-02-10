@@ -46,7 +46,21 @@
         </el-tab-pane>
       </el-tabs>
 
-      <el-table v-loading="loading" :data="dataList" style="width: 100%; min-height: 400px;">
+      <el-table 
+        :key="queryParams.status"
+        v-loading="loading" 
+        :data="dataList" 
+        border 
+        stripe 
+        style="width: 100%; min-height: 400px;"
+      >
+        <el-table-column label="核查状态" align="center" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.is_compliant ? 'success' : 'danger'">
+              {{ scope.row.is_compliant ? '已核查' : '待核查' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="线索编号" align="center" prop="clue_number" width="180" />
         <el-table-column label="业务号码" align="center" prop="phone_number" width="130" />
         <el-table-column label="入网属地" align="center" prop="join_location" width="100" />
@@ -63,15 +77,15 @@
           <el-table-column label="更新时间" align="center" prop="updated_time" width="170" />
         </template>
 
-        <el-table-column label="操作" align="center" width="120" fixed="right">
+        <el-table-column label="操作" align="center" width="150" fixed="right">
           <template #default="scope">
             <el-button 
-              :type="queryParams.status === 'pending' ? 'primary' : 'success'" 
+              :type="queryParams.status === 'pending' ? 'primary' : 'warning'" 
               link 
-              :icon="queryParams.status === 'pending' ? 'Edit' : 'View'" 
+              :icon="queryParams.status === 'pending' ? 'Edit' : 'EditPen'" 
               @click="handleInvestigate(scope.row)"
             >
-              {{ queryParams.status === 'pending' ? '开始核查' : '详情/修改' }}
+              {{ queryParams.status === 'pending' ? '立即核查' : '重新核查' }}
             </el-button>
           </template>
         </el-table-column>
@@ -137,7 +151,6 @@ async function getCounts() {
 
 async function getList() {
   loading.value = true;
-  dataList.value = [];
   try {
     const res = await listWxSafeInvestigation(queryParams);
     dataList.value = res.data.data.items;

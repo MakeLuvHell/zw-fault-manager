@@ -66,7 +66,7 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
     
     async def import_data(self, file_content: bytes) -> WxSafeImportResponse:
         """
-        从 Excel 导入数据
+        从 Excel 导入数据 (批量优化版)
         """
         try:
             df = pd.read_excel(io.BytesIO(file_content))
@@ -92,8 +92,28 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
             raise CustomException(msg=f"导入失败，缺少必要列: {', '.join(missing_cols)}")
 
         results: list[ImportResultDetail] = []
-        success_count = 0
+        valid_masters = []
+        valid_details = []
         
+        # 1. 预处理：获取所有 Excel 中的线索编号，用于批量查重
+        xls_clue_numbers = []
+        if "线索编号" in df.columns:
+             # 转为字符串并去重，防止 Excel 内部重复导致查询条件冗余（虽然 in 查询不在乎）
+             xls_clue_numbers = df["线索编号"].dropna().astype(str).unique().tolist()
+        
+        # 批量查询数据库中已存在的线索编号
+        existing_clue_set = set()
+        if xls_clue_numbers:
+            # 分批查询防止参数过多 (按 1000 条分批)
+            batch_size = 1000
+            for i in range(0, len(xls_clue_numbers), batch_size):
+                batch = xls_clue_numbers[i:i + batch_size]
+                stmt = select(WxSafeInfo.clue_number).where(WxSafeInfo.clue_number.in_(batch))
+                db_res = await self.auth.db.execute(stmt)
+                existing_clue_set.update(db_res.scalars().all())
+
+        from app.plugin.module_wxsafe.info.model import WxSafeDetail
+
         for _, row in df.iterrows():
             # 提取数据并清洗 (处理 NaN)
             item_data = {}
@@ -104,7 +124,10 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
                 else:
                     # 特殊处理业务号码和受害人号码，防止被读成浮点数
                     if en_name in ["phone_number", "victim_number", "clue_number"]:
-                        item_data[en_name] = str(val).split('.')[0] if isinstance(val, float) else str(val)
+                        val_str = str(val)
+                        if val_str.endswith('.0'):
+                             val_str = val_str[:-2]
+                        item_data[en_name] = val_str
                     # 处理时间字段
                     elif en_name == "incident_time":
                         if isinstance(val, pd.Timestamp):
@@ -127,29 +150,63 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
             clue_num = str(item_data.get("clue_number", "未知"))
             
             try:
-                # 1. 验证数据格式 (利用 Pydantic Schema，包含 11位号码校验)
-                # 注意：clue_number 也是必填的
+                # 2. 验证数据格式 (利用 Pydantic Schema)
                 schema_data = WxSafeInfoCreate(**item_data)
                 
-                # 2. 检查唯一性 (线索编号)
-                existing = await self.get(clue_number=schema_data.clue_number)
-                if existing:
+                # 3. 查重 (数据库已存在 或 Excel 前序行已出现)
+                if schema_data.clue_number in existing_clue_set:
                     results.append(ImportResultDetail(
                         clue_number=clue_num,
                         status="失败",
-                        reason="线索编号已存在"
+                        reason="线索编号已存在或重复"
                     ))
                     continue
                 
-                # 3. 入库
-                await self.create(schema_data)
-                success_count += 1
+                # 标记为已存在，防止 Excel 内部后续重复
+                existing_clue_set.add(schema_data.clue_number)
+                
+                # 4. 构建对象 (不入库)
+                obj_dict = schema_data.model_dump()
+                
+                master_fields = [
+                    "clue_number", "category", "phone_number", "report_month", 
+                    "incident_time", "city", "fraud_type", "victim_number",
+                    "is_compliant", "has_resume_before", 
+                    "is_resume_compliant", "responsibility", "is_self_or_family", 
+                    "police_collab", "investigation_note", "abnormal_scene", "feedback"
+                ]
+                detail_fields = [
+                    "join_date", "online_duration", "install_type", "join_location",
+                    "is_local_handle", "owner_name", "cert_address", "customer_type", 
+                    "other_phones", "age", "agent_name", "store_name", "staff_id", 
+                    "staff_name", "concurrent_cards", "package_name", "is_fusion_package", 
+                    "has_broadband", "card_type"
+                ]
+                
+                master_data = {k: v for k, v in obj_dict.items() if k in master_fields}
+                detail_data = {k: v for k, v in obj_dict.items() if k in detail_fields}
+                
+                # 补全关联键
+                detail_data["clue_number"] = obj_dict["clue_number"]
+                detail_data["phone_number"] = obj_dict["phone_number"]
+                
+                # 实例化 Master
+                master_obj = WxSafeInfo(**master_data)
+                if self.auth.user:
+                    if hasattr(master_obj, "created_id"): setattr(master_obj, "created_id", self.auth.user.id)
+                    if hasattr(master_obj, "updated_id"): setattr(master_obj, "updated_id", self.auth.user.id)
+                
+                # 实例化 Detail
+                detail_obj = WxSafeDetail(**detail_data)
+
+                valid_masters.append(master_obj)
+                valid_details.append(detail_obj)
+
                 results.append(ImportResultDetail(
                     clue_number=clue_num,
                     status="成功"
                 ))
             except ValidationError as ve:
-                # 提取 Pydantic 校验错误
                 errors = ve.errors()
                 error_msg = "; ".join([f"{e['loc'][-1]}: {e['msg']}" for e in errors])
                 results.append(ImportResultDetail(
@@ -163,6 +220,25 @@ class CRUDWxSafe(CRUDBase[WxSafeInfo, WxSafeInfoCreate, WxSafeInfoUpdate]):
                     status="失败",
                     reason=f"系统错误: {e!s}"
                 ))
+
+        # 5. 批量执行插入
+        success_count = 0
+        if valid_masters:
+            try:
+                self.auth.db.add_all(valid_masters)
+                self.auth.db.add_all(valid_details)
+                await self.auth.db.flush()
+                success_count = len(valid_masters)
+            except Exception as e:
+                # 批量插入失败，回滚并更新状态
+                # 注意：这里可能需要更精细的错误处理，但通常预查重后极少失败
+                await self.auth.db.rollback()
+                success_count = 0
+                error_msg = f"数据库写入异常: {e!s}"
+                for res in results:
+                    if res.status == "成功":
+                        res.status = "失败"
+                        res.reason = error_msg
 
         return WxSafeImportResponse(
             total=len(df),

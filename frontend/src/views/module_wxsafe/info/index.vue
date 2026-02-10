@@ -42,52 +42,103 @@
       </template>
 
       <!-- 数据表格 -->
-      <el-table v-loading="loading" :data="dataList" border stripe style="width: 100%">
-        <!-- 1-8 核心字段 -->
-        <el-table-column label="线索编号" align="center" prop="clue_number" width="180" fixed="left" />
+      <el-table 
+        v-loading="loading" 
+        :data="dataList" 
+        border 
+        stripe 
+        style="width: 100%"
+      >
+        <!-- 展开行：展示所有 36 个字段的详情 -->
+        <el-table-column type="expand">
+          <template #default="props">
+            <div class="p-6 bg-[var(--el-fill-color-blank)]">
+              <el-descriptions title="线索详查画像" :column="3" border>
+                <el-descriptions-item label="入网时间">{{ props.row.join_date || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="在网时长(月)">{{ props.row.online_duration || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="新装或存量">{{ props.row.install_type || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="入网属地">{{ props.row.join_location || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="办理方式">{{ props.row.is_local_handle || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="机主名称">{{ props.row.owner_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="证件地址" :span="2">{{ props.row.cert_address || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="客户类型">{{ props.row.customer_type || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="名下手机号" :span="2">{{ props.row.other_phones || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="年龄">{{ props.row.age || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="代理商">{{ props.row.agent_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受理厅店">{{ props.row.store_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受理人工号">{{ props.row.staff_id || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受理人">{{ props.row.staff_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="同时办理卡号">{{ props.row.concurrent_cards || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="套餐名称">{{ props.row.package_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="是否融合">{{ props.row.is_fusion_package || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="宽带业务">{{ props.row.has_broadband || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="主副卡">{{ props.row.card_type || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受害人号码" :span="3">
+                  <div v-if="props.row.victim_number" class="flex flex-wrap gap-2 items-center">
+                    <el-tag v-for="num in props.row.victim_number.split(',')" :key="num">{{ num }}</el-tag>
+                    <el-button link type="primary" icon="copy-document" @click="copyText(props.row.victim_number)">复制全部</el-button>
+                  </div>
+                  <span v-else>-</span>
+                </el-descriptions-item>
+              </el-descriptions>
+
+              <el-descriptions title="核查反馈信息" :column="3" border class="mt-4">
+                <el-descriptions-item label="合规受理">
+                  <el-tag :type="props.row.is_compliant === '是' ? 'success' : (props.row.is_compliant === '否' ? 'danger' : 'info')">
+                    {{ props.row.is_compliant || '待核查' }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="涉案前复通">{{ props.row.has_resume_before || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="复通规范">{{ props.row.is_resume_compliant || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="责任认定">{{ props.row.responsibility || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="亲属涉诈">{{ props.row.is_self_or_family || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="警企协同">{{ props.row.police_collab || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="异常场景" :span="3">{{ props.row.abnormal_scene || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="调查备注" :span="3">{{ props.row.investigation_note || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="核查反馈" :span="3">{{ props.row.feedback || '-' }}</el-descriptions-item>
+              </el-descriptions>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- 1-8 核心字段 (保留在主表) -->
+        <el-table-column label="线索编号" align="center" prop="clue_number" width="180" />
         <el-table-column label="涉诈或涉案" align="center" prop="category" width="100" />
-        <el-table-column label="业务号码" align="center" prop="phone_number" width="130" fixed="left" />
+        <el-table-column label="业务号码" align="center" prop="phone_number" width="130" />
         <el-table-column label="月份" align="center" prop="report_month" width="100" />
         <el-table-column label="涉诈涉案时间" align="center" prop="incident_time" width="170" />
         <el-table-column label="涉诈涉案地" align="center" prop="city" width="120" />
-        <el-table-column label="涉诈类型" align="center" prop="fraud_type" width="120" show-overflow-tooltip />
-        <el-table-column label="受害人号码" align="center" prop="victim_number" width="150" show-overflow-tooltip />
-
-        <!-- 9-15 基础业务信息 -->
-        <el-table-column label="入网时间" align="center" prop="join_date" width="170" />
-        <el-table-column label="在网时长(月)" align="center" prop="online_duration" width="110" />
-        <el-table-column label="新装或存量" align="center" prop="install_type" width="100" />
-        <el-table-column label="入网属地" align="center" prop="join_location" width="110" />
-        <el-table-column label="办理方式" align="center" prop="is_local_handle" width="120" />
-        <el-table-column label="机主名称" align="center" prop="owner_name" width="100" />
-        <el-table-column label="证件地址" align="center" prop="cert_address" width="200" show-overflow-tooltip />
-
-        <!-- 16-20 用户画像 -->
-        <el-table-column label="客户类型" align="center" prop="customer_type" width="100" />
-        <el-table-column label="名下手机号" align="center" prop="other_phones" width="150" show-overflow-tooltip />
-        <el-table-column label="年龄" align="center" prop="age" width="70" />
-        <el-table-column label="代理商" align="center" prop="agent_name" width="150" show-overflow-tooltip />
-        <el-table-column label="受理厅店" align="center" prop="store_name" width="150" show-overflow-tooltip />
-
-        <!-- 21-27 受理与套餐 -->
-        <el-table-column label="受理人工号" align="center" prop="staff_id" width="100" />
-        <el-table-column label="受理人" align="center" prop="staff_name" width="100" />
-        <el-table-column label="同时办理卡号" align="center" prop="concurrent_cards" width="150" show-overflow-tooltip />
-        <el-table-column label="套餐名称" align="center" prop="package_name" width="150" show-overflow-tooltip />
-        <el-table-column label="是否融合" align="center" prop="is_fusion_package" width="90" />
-        <el-table-column label="宽带业务" align="center" prop="has_broadband" width="90" />
-        <el-table-column label="主副卡" align="center" prop="card_type" width="80" />
-
-        <!-- 28-36 核查反馈信息 -->
-        <el-table-column label="合规受理" align="center" prop="is_compliant" width="90" />
-        <el-table-column label="涉案前复通" align="center" prop="has_resume_before" width="110" />
-        <el-table-column label="复通规范" align="center" prop="is_resume_compliant" width="90" />
-        <el-table-column label="责任认定" align="center" prop="responsibility" width="120" show-overflow-tooltip />
-        <el-table-column label="亲属涉诈" align="center" prop="is_self_or_family" width="90" />
-        <el-table-column label="警企协同" align="center" prop="police_collab" width="120" show-overflow-tooltip />
-        <el-table-column label="调查备注" align="center" prop="investigation_note" width="150" show-overflow-tooltip />
-        <el-table-column label="异常场景" align="center" prop="abnormal_scene" width="150" show-overflow-tooltip />
-        <el-table-column label="核查反馈" align="center" prop="feedback" width="200" show-overflow-tooltip />
+        <el-table-column label="涉诈类型" align="center" prop="fraud_type" width="150" show-overflow-tooltip />
+        <el-table-column label="受害人号码" align="center" min-width="250">
+          <template #default="scope">
+            <template v-if="scope.row.victim_number">
+              <div class="flex flex-wrap gap-1 justify-center">
+                <el-tag 
+                  v-for="num in scope.row.victim_number.split(',').slice(0, 6)" 
+                  :key="num" 
+                  size="small" 
+                  type="info"
+                >
+                  {{ num }}
+                </el-tag>
+                <el-popover
+                  v-if="scope.row.victim_number.split(',').length > 6"
+                  placement="top"
+                  :width="300"
+                  trigger="hover"
+                >
+                  <template #reference>
+                    <el-tag size="small" type="warning">+{{ scope.row.victim_number.split(',').length - 6 }}</el-tag>
+                  </template>
+                  <div class="flex flex-wrap gap-2">
+                    <el-tag v-for="num in scope.row.victim_number.split(',')" :key="num" size="small">{{ num }}</el-tag>
+                  </div>
+                </el-popover>
+              </div>
+            </template>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
       </el-table>
 
       <!-- 分页 -->
@@ -326,6 +377,22 @@ async function handleExport() {
     console.error('导出失败', error);
     ElMessage.error('导出失败');
   }
+}
+
+/** 复制文本 */
+function copyText(text: string) {
+  const input = document.createElement('textarea');
+  input.value = text;
+  document.body.appendChild(input);
+  input.select();
+  try {
+    if (document.execCommand('copy')) {
+      ElMessage.success('复制成功');
+    }
+  } catch (err) {
+    ElMessage.error('复制失败');
+  }
+  document.body.removeChild(input);
 }
 
 onMounted(() => {
