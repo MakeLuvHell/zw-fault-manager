@@ -50,9 +50,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[Any, Any]:
 
         if await create_schema_if_not_exists(async_engine, settings.WXSAFE_SCHEMA):
             log.info(f"✅ PostgreSQL wxsafe 模块 schema ({settings.WXSAFE_SCHEMA}) 检查/创建完成")
+
+        if await create_schema_if_not_exists(async_engine, settings.BRIEF_SCHEMA):
+            log.info(f"✅ PostgreSQL brief 模块 schema ({settings.BRIEF_SCHEMA}) 检查/创建完成")
             
         # 确保导入新模块的模型，以便 create_tables 能扫描到
         from app.plugin.module_wxsafe.info.model import WxSafeInfo  # noqa: F401
+        from app.plugin.module_brief.model import BriefReport  # noqa: F401
 
         await InitializeData().init_db()
         log.info(f"✅ {settings.DATABASE_TYPE}数据库初始化完成")

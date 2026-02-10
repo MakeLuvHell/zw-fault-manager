@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     DATABASE_SCHEMA: str = 'public'        # PostgreSQL 主模式名称（系统核心表所在模式）
     CALLING_SCHEMA: str = 'calling'        # calling 模块专用模式
     WXSAFE_SCHEMA: str = 'wxsafe'          # wxsafe 模块专用模式
+    BRIEF_SCHEMA: str = 'brief'            # brief 模块专用模式
+
+    # ================================================= #
+    # ******************* Dify 配置 ******************* #
+    # ================================================= #
+    DIFY_API_URL: str = "https://api.dify.ai/v1/workflows/run"
+    DIFY_API_KEY: str = ""  # 需在 .env 中配置
 
     # ================================================= #
     # ******************** Redis配置 ******************* #
