@@ -85,15 +85,15 @@ const uploadForm = ref({
 const uploadFile = ref<any>(null);
 
 const getList = async () => {
-  loading.ref = true;
+  loading.value = true;
   try {
     const res: any = await request({
       url: '/brief/list',
       method: 'get',
       params: queryParams.value
     });
-    list.value = res.data.rows || res.data; // 根据实际响应结构调整
-    total.value = res.data.total || list.value.length;
+    list.value = res.data.items || [];
+    total.value = res.data.total || 0;
   } catch (error) {
     console.error(error);
   } finally {
