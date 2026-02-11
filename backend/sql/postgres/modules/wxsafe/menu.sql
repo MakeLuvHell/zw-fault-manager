@@ -41,17 +41,25 @@ BEGIN
     INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
     VALUES ('导入', 3, 3, 'module_wxsafe:info:import', wxsafe_menu_id, wxsafe_menu_id + 3, gen_random_uuid(), '0', '导入', false, true, false, false, NOW(), NOW());
 
+    -- 导出
+    INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+    VALUES ('导出', 3, 4, 'module_wxsafe:info:export', wxsafe_menu_id, wxsafe_menu_id + 4, gen_random_uuid(), '0', '导出', false, true, false, false, NOW(), NOW());
+
+    -- 导出日志
+    INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 
+    VALUES ('导出日志', 3, 5, 'module_wxsafe:info:export_log', wxsafe_menu_id, wxsafe_menu_id + 5, gen_random_uuid(), '0', '导出日志', false, true, false, false, NOW(), NOW());
+
     -- 5. 插入菜单: 涉诈信息核查
     INSERT INTO sys_menu ("name", "type", "order", "permission", icon, route_name, route_path, component_path, redirect, hidden, keep_alive, always_show, title, affix, parent_id, id, "uuid", status, created_time, updated_time) 
     VALUES (
         '涉诈信息核查', 2, 2, 'module_wxsafe:investigation:list', 'view', 'WxSafeInvestigation', '/wxsafe/investigation', 'module_wxsafe/investigation/index', NULL, 
-        false, true, false, '涉诈信息核查', false, root_id, wxsafe_menu_id + 4, gen_random_uuid(), '0', NOW(), NOW()
+        false, true, false, '涉诈信息核查', false, root_id, wxsafe_menu_id + 6, gen_random_uuid(), '0', NOW(), NOW()
     );
     
     DECLARE
         investigation_menu_id INT;
     BEGIN
-        investigation_menu_id := wxsafe_menu_id + 4;
+        investigation_menu_id := wxsafe_menu_id + 6;
         
         -- 查询
         INSERT INTO sys_menu ("name", "type", "order", "permission", parent_id, id, "uuid", status, title, hidden, keep_alive, affix, always_show, created_time, updated_time) 

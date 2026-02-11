@@ -103,6 +103,10 @@ class SchedulerUtil:
                 if job_id.startswith("calling_task_"):
                     return
 
+                # 过滤清理任务：不记录调度日志，避免字符串job_id与INTEGER字段类型冲突
+                if job_id.startswith("calling_history_cleanup"):
+                    return
+
                 query_job = cls.get_job(job_id=job_id)
 
                 if query_job:

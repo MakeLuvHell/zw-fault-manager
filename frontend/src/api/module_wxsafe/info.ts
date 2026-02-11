@@ -1,13 +1,24 @@
 import request from '@/utils/request';
 
 /**
+ * 格式化查询参数
+ */
+function formatQueryParams(query: any) {
+  const params = { ...query };
+  if (params.report_month && Array.isArray(params.report_month)) {
+    params.report_month = params.report_month.join(',');
+  }
+  return params;
+}
+
+/**
  * 获取涉诈信息列表
  */
 export function listWxSafeInfo(query: any) {
   return request({
     url: '/wxsafe/info/list',
     method: 'get',
-    params: query
+    params: formatQueryParams(query)
   });
 }
 
@@ -18,7 +29,7 @@ export function listWxSafeInvestigation(query: any) {
   return request({
     url: '/wxsafe/info/investigation/list',
     method: 'get',
-    params: query
+    params: formatQueryParams(query)
   });
 }
 
@@ -79,6 +90,16 @@ export function listWxSafeLogs(clue_number: string) {
 }
 
 /**
+ * 获取导出历史记录
+ */
+export function listExportLogs() {
+  return request({
+    url: '/wxsafe/info/logs/all/export',
+    method: 'get'
+  });
+}
+
+/**
  * 下载导入模板
  */
 export function downloadWxSafeTemplate() {
@@ -96,7 +117,7 @@ export function exportWxSafeInfo(query: any) {
   return request({
     url: '/wxsafe/info/export',
     method: 'post',
-    params: query,
+    params: formatQueryParams(query),
     responseType: 'blob'
   });
 }

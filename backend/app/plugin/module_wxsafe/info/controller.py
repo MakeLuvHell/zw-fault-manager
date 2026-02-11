@@ -102,68 +102,43 @@ async def get_logs(
     result = await WxSafeService.get_wx_safe_logs(auth, clue_number)
     return SuccessResponse(data=result)
 
-@router.post("/import", summary="批量导入涉诈信息", response_model=ResponseSchema)
-
-async def import_data(
-
-    file: UploadFile = File(...),
-
-    auth: AuthSchema = Depends(AuthPermission(["module_wxsafe:info:import"]))
-
+@router.get("/logs/all/export", summary="获取导出历史记录")
+async def get_export_logs(
+    auth: AuthSchema = Depends(AuthPermission(["module_wxsafe:info:export_log"]))
 ):
-
-    content = await file.read()
-
-    result = await WxSafeService.import_wx_safe(auth, content)
-
+    result = await WxSafeService.get_export_logs(auth)
     return SuccessResponse(data=result)
 
-
+@router.post("/import", summary="批量导入涉诈信息", response_model=ResponseSchema)
+async def import_data(
+    file: UploadFile = File(...),
+    auth: AuthSchema = Depends(AuthPermission(["module_wxsafe:info:import"]))
+):
+    content = await file.read()
+    result = await WxSafeService.import_wx_safe(auth, content)
+    return SuccessResponse(data=result)
 
 @router.post("/export", summary="导出涉诈信息")
-
 async def export_data(
-
     clue_number: str = Query(None),
-
     phone_number: str = Query(None),
-
     join_location: str = Query(None),
-
     report_month: str = Query(None),
-
     auth: AuthSchema = Depends(AuthPermission(["module_wxsafe:info:export"]))
-
 ):
-
     search = {}
-
     if clue_number:
-
         search["clue_number"] = ("like", clue_number)
-
     if phone_number:
-
         search["phone_number"] = ("like", phone_number)
-
     if join_location:
-
         search["join_location"] = ("like", join_location)
-
     if report_month:
-
         search["report_month"] = ("like", report_month)
 
-        
-
     result = await WxSafeService.export_wx_safe(auth, search)
-
     return Response(
-
         content=result,
-
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-
         headers={"Content-Disposition": f"attachment; filename=wx_safe_data.xlsx"}
-
     )

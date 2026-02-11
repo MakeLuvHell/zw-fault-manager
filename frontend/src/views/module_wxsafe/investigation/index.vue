@@ -15,10 +15,12 @@
         <el-form-item label="涉诈时间" prop="report_month">
           <el-date-picker
             v-model="queryParams.report_month"
-            type="month"
-            placeholder="选择月份"
+            type="monthrange"
+            range-separator="至"
+            start-placeholder="开始月份"
+            end-placeholder="结束月份"
             value-format="YYYY-MM"
-            style="width: 150px"
+            style="width: 240px"
             @change="handleQuery"
           />
         </el-form-item>
@@ -52,8 +54,60 @@
         :data="dataList" 
         border 
         stripe 
+        row-key="clue_number"
         style="width: 100%; min-height: 400px;"
       >
+        <!-- 展开行：展示所有字段的详情 -->
+        <el-table-column type="expand">
+          <template #default="props">
+            <div class="p-4">
+              <el-descriptions title="线索详查画像" :column="3" border size="small" class="custom-descriptions">
+                <el-descriptions-item label="入网时间">{{ props.row.join_date || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="在网时长(月)">{{ props.row.online_duration || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="新装或存量">{{ props.row.install_type || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="入网属地">{{ props.row.join_location || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="办理方式">{{ props.row.is_local_handle || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="机主名称">{{ props.row.owner_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="证件地址" :span="2">{{ props.row.cert_address || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="客户类型">{{ props.row.customer_type || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="名下手机号" :span="2">{{ props.row.other_phones || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="年龄">{{ props.row.age || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="代理商">{{ props.row.agent_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受理厅店">{{ props.row.store_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受理人工号">{{ props.row.staff_id || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="受理人">{{ props.row.staff_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="同时办理卡号">{{ props.row.concurrent_cards || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="套餐名称">{{ props.row.package_name || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="是否融合">{{ props.row.is_fusion_package || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="宽带业务">{{ props.row.has_broadband || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="主副卡">{{ props.row.card_type || '-' }}</el-descriptions-item>
+                <!-- <el-descriptions-item label="受害人号码" :span="3">
+                  <div v-if="props.row.victim_number" class="flex flex-wrap gap-2 items-center min-h-[32px]">
+                    <el-tag v-for="num in props.row.victim_number.split(',')" :key="num">{{ num }}</el-tag>
+                  </div>
+                  <span v-else>-</span>
+                </el-descriptions-item> -->
+              </el-descriptions>
+
+              <el-descriptions title="核查反馈信息" :column="3" border size="small" class="mt-4 custom-descriptions">
+                <el-descriptions-item label="合规受理">
+                  <el-tag size="small" :type="props.row.is_compliant === '是' ? 'success' : (props.row.is_compliant === '否' ? 'danger' : 'info')">
+                    {{ props.row.is_compliant || '待核查' }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="涉案前复通">{{ props.row.has_resume_before || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="复通规范">{{ props.row.is_resume_compliant || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="责任认定">{{ props.row.responsibility || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="亲属涉诈">{{ props.row.is_self_or_family || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="警企协同">{{ props.row.police_collab || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="异常场景" :span="3">{{ props.row.abnormal_scene || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="调查备注" :span="3">{{ props.row.investigation_note || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="核查反馈" :span="3">{{ props.row.feedback || '-' }}</el-descriptions-item>
+              </el-descriptions>
+            </div>
+          </template>
+        </el-table-column>
+
         <el-table-column label="核查状态" align="center" width="100">
           <template #default="scope">
             <el-tag :type="scope.row.is_compliant ? 'success' : 'danger'">
@@ -199,5 +253,10 @@ onMounted(() => {
 <style scoped>
 .app-container {
   padding: 20px;
+}
+:deep(.custom-descriptions .el-descriptions__label),
+:deep(.custom-descriptions .el-descriptions__content) {
+  font-size: 13px !important;
+  line-height: 1.5;
 }
 </style>

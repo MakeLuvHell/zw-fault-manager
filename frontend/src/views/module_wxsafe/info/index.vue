@@ -4,21 +4,23 @@
     <el-card shadow="never" class="mb-4">
       <el-form :inline="true" :model="queryParams" ref="queryFormRef">
         <el-form-item label="线索编号" prop="clue_number">
-          <el-input v-model="queryParams.clue_number" placeholder="请输入" clearable style="width: 200px" @keyup.enter="handleQuery" />
+          <el-input v-model="queryParams.clue_number" placeholder="请输入线索编号" clearable @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="业务号码" prop="phone_number">
-          <el-input v-model="queryParams.phone_number" placeholder="请输入" clearable style="width: 180px" @keyup.enter="handleQuery" />
+          <el-input v-model="queryParams.phone_number" placeholder="请输入业务号码" clearable @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="入网属地" prop="join_location">
-          <el-input v-model="queryParams.join_location" placeholder="请输入" clearable style="width: 150px" @keyup.enter="handleQuery" />
+          <el-input v-model="queryParams.join_location" placeholder="请输入入网属地" clearable @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="涉诈时间" prop="report_month">
           <el-date-picker
             v-model="queryParams.report_month"
-            type="month"
-            placeholder="选择月份"
+            type="monthrange"
+            range-separator="至"
+            start-placeholder="开始月份"
+            end-placeholder="结束月份"
             value-format="YYYY-MM"
-            style="width: 150px"
+            style="width: 240px"
             @change="handleQuery"
           />
         </el-form-item>
@@ -34,9 +36,31 @@
       <template #header>
         <div class="flex justify-between items-center">
           <div class="flex gap-2">
-            <el-button type="primary" icon="plus" @click="handleAdd">单条录入</el-button>
-            <el-button type="success" icon="upload" @click="handleImport">批量导入</el-button>
-            <el-button type="warning" icon="download" @click="handleExport">导出全量</el-button>
+            <el-button 
+              v-hasPerm="['module_wxsafe:info:add']"
+              type="primary" 
+              icon="plus" 
+              @click="handleAdd"
+            >单条录入</el-button>
+            <el-button 
+              v-hasPerm="['module_wxsafe:info:import']"
+              type="success" 
+              icon="upload" 
+              @click="handleImport"
+            >批量导入</el-button>
+            <el-button 
+              v-hasPerm="['module_wxsafe:info:export']"
+              type="warning" 
+              icon="download" 
+              @click="handleExport"
+            >导出全量</el-button>
+            <el-button 
+              v-hasPerm="['module_wxsafe:info:export_log']"
+              type="info" 
+              icon="list" 
+              plain
+              @click="handleViewExportLogs"
+            >导出记录</el-button>
           </div>
         </div>
       </template>
@@ -47,13 +71,14 @@
         :data="dataList" 
         border 
         stripe 
+        row-key="clue_number"
         style="width: 100%"
       >
         <!-- 展开行：展示所有 36 个字段的详情 -->
         <el-table-column type="expand">
           <template #default="props">
-            <div class="p-6 bg-[var(--el-fill-color-blank)]">
-              <el-descriptions title="线索详查画像" :column="3" border>
+            <div class="p-4">
+              <el-descriptions title="线索详查画像" :column="3" border size="small" class="custom-descriptions">
                 <el-descriptions-item label="入网时间">{{ props.row.join_date || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="在网时长(月)">{{ props.row.online_duration || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="新装或存量">{{ props.row.install_type || '-' }}</el-descriptions-item>
@@ -73,18 +98,18 @@
                 <el-descriptions-item label="是否融合">{{ props.row.is_fusion_package || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="宽带业务">{{ props.row.has_broadband || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="主副卡">{{ props.row.card_type || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="受害人号码" :span="3">
-                  <div v-if="props.row.victim_number" class="flex flex-wrap gap-2 items-center">
+                <!-- <el-descriptions-item label="受害人号码" :span="3">
+                  <div v-if="props.row.victim_number" class="flex flex-wrap gap-2 items-center min-h-[32px]">
                     <el-tag v-for="num in props.row.victim_number.split(',')" :key="num">{{ num }}</el-tag>
                     <el-button link type="primary" icon="copy-document" @click="copyText(props.row.victim_number)">复制全部</el-button>
                   </div>
                   <span v-else>-</span>
-                </el-descriptions-item>
+                </el-descriptions-item> -->
               </el-descriptions>
 
-              <el-descriptions title="核查反馈信息" :column="3" border class="mt-4">
+              <el-descriptions title="核查反馈信息" :column="3" border size="small" class="mt-4 custom-descriptions">
                 <el-descriptions-item label="合规受理">
-                  <el-tag :type="props.row.is_compliant === '是' ? 'success' : (props.row.is_compliant === '否' ? 'danger' : 'info')">
+                  <el-tag size="small" :type="props.row.is_compliant === '是' ? 'success' : (props.row.is_compliant === '否' ? 'danger' : 'info')">
                     {{ props.row.is_compliant || '待核查' }}
                   </el-tag>
                 </el-descriptions-item>
@@ -103,16 +128,22 @@
 
         <!-- 1-8 核心字段 (保留在主表) -->
         <el-table-column label="线索编号" align="center" prop="clue_number" width="180" />
-        <el-table-column label="涉诈或涉案" align="center" prop="category" width="100" />
+        <el-table-column label="涉诈或涉案" align="center" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.category === '涉诈' ? 'danger' : (scope.row.category === '涉案' ? 'warning' : '')">
+              {{ scope.row.category || '-' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="业务号码" align="center" prop="phone_number" width="130" />
         <el-table-column label="月份" align="center" prop="report_month" width="100" />
         <el-table-column label="涉诈涉案时间" align="center" prop="incident_time" width="170" />
         <el-table-column label="涉诈涉案地" align="center" prop="city" width="120" />
-        <el-table-column label="涉诈类型" align="center" prop="fraud_type" width="150" show-overflow-tooltip />
-        <el-table-column label="受害人号码" align="center" min-width="250">
+        <el-table-column label="涉诈类型" align="center" prop="fraud_type" show-overflow-tooltip />
+        <!-- <el-table-column label="受害人号码" align="center" min-width="250">
           <template #default="scope">
             <template v-if="scope.row.victim_number">
-              <div class="flex flex-wrap gap-1 justify-center">
+              <div class="flex flex-wrap gap-1 justify-center min-h-[32px]">
                 <el-tag 
                   v-for="num in scope.row.victim_number.split(',').slice(0, 6)" 
                   :key="num" 
@@ -138,7 +169,7 @@
             </template>
             <span v-else>-</span>
           </template>
-        </el-table-column>
+        </el-table-column> -->
       </el-table>
 
       <!-- 分页 -->
@@ -187,9 +218,9 @@
         <el-form-item label="涉诈类型" prop="fraud_type">
           <el-input v-model="formData.fraud_type" placeholder="请输入涉诈类型" />
         </el-form-item>
-        <el-form-item label="受害人号码" prop="victim_number">
+        <!-- <el-form-item label="受害人号码" prop="victim_number">
           <el-input v-model="formData.victim_number" type="textarea" placeholder="请输入受害人号码（多个用逗号隔开）" />
-        </el-form-item>
+        </el-form-item> -->
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -229,13 +260,36 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 导出记录日志弹窗 -->
+    <el-dialog title="导出历史记录" v-loading="logLoading" v-model="exportLogVisible" width="800px">
+      <el-table :data="exportLogs" max-height="450" stripe border>
+        <el-table-column label="操作人" prop="operator_name" width="120" align="center" />
+        <el-table-column label="导出条数" width="100" align="center">
+          <template #default="scope">
+            <el-tag type="success">{{ scope.row.change_diff?.export_count || 0 }}条</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="导出时间" prop="created_time" width="170" align="center" />
+        <el-table-column label="检索条件" show-overflow-tooltip>
+          <template #default="scope">
+            <span class="text-xs text-gray-500">{{ scope.row.change_diff?.export_query || '全量导出' }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="exportLogVisible = false">关 闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { listWxSafeInfo, addWxSafeInfo, importWxSafeInfo, downloadWxSafeTemplate, exportWxSafeInfo } from '@/api/module_wxsafe/info';
+import { listWxSafeInfo, addWxSafeInfo, importWxSafeInfo, downloadWxSafeTemplate, exportWxSafeInfo, listExportLogs } from '@/api/module_wxsafe/info';
 import ImportModal from '@/components/CURD/ImportModal.vue';
 
 const loading = ref(false);
@@ -245,6 +299,11 @@ const dialogVisible = ref(false);
 const dialogTitle = ref('');
 const importVisible = ref(false);
 const resultVisible = ref(false);
+
+// 导出日志相关状态
+const exportLogVisible = ref(false);
+const logLoading = ref(false);
+const exportLogs = ref([]);
 
 const queryParams = reactive({
   page_no: 1,
@@ -379,6 +438,20 @@ async function handleExport() {
   }
 }
 
+/** 查看导出记录 */
+async function handleViewExportLogs() {
+  exportLogVisible.value = true;
+  logLoading.value = true;
+  try {
+    const res = await listExportLogs();
+    exportLogs.value = res.data.data;
+  } catch (error) {
+    console.error(error);
+  } finally {
+    logLoading.value = false;
+  }
+}
+
 /** 复制文本 */
 function copyText(text: string) {
   const input = document.createElement('textarea');
@@ -406,5 +479,10 @@ onMounted(() => {
 }
 .ml-2 {
   margin-left: 8px;
+}
+:deep(.custom-descriptions .el-descriptions__label),
+:deep(.custom-descriptions .el-descriptions__content) {
+  font-size: 13px !important;
+  line-height: 1.5;
 }
 </style>

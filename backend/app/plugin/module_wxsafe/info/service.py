@@ -77,16 +77,30 @@ class WxSafeService:
             query = query.join(WxSafeInfo.detail).where(WxSafeDetail.join_location.like(f"{clean_dept_name}%"))
 
         # 3. 处理业务过滤条件
-        # 月份查询转时间范围
+        # 月份查询转时间范围 (支持单月字符串、区间列表或逗号分隔字符串)
         if "report_month" in search:
             _, val = search.pop("report_month")
-            if val and "-" in val:
+            if val:
                 try:
-                    y, m = map(int, val.split("-"))
-                    last_day = calendar.monthrange(y, m)[1]
-                    start_dt = datetime(y, m, 1, 0, 0, 0)
-                    end_dt = datetime(y, m, last_day, 23, 59, 59)
-                    query = query.where(WxSafeInfo.incident_time.between(start_dt, end_dt))
+                    # 将逗号分隔字符串转为列表 ["2024-01", "2024-03"]
+                    if isinstance(val, str) and "," in val:
+                        val = val.split(",")
+                    
+                    if isinstance(val, list) and len(val) == 2:
+                        # 处理区间选择
+                        start_y, start_m = map(int, val[0].split("-"))
+                        end_y, end_m = map(int, val[1].split("-"))
+                        last_day = calendar.monthrange(end_y, end_m)[1]
+                        start_dt = datetime(start_y, start_m, 1, 0, 0, 0)
+                        end_dt = datetime(end_y, end_m, last_day, 23, 59, 59)
+                        query = query.where(WxSafeInfo.incident_time.between(start_dt, end_dt))
+                    elif isinstance(val, str) and "-" in val:
+                        # 处理单月选择 "2024-01"
+                        y, m = map(int, val.split("-"))
+                        last_day = calendar.monthrange(y, m)[1]
+                        start_dt = datetime(y, m, 1, 0, 0, 0)
+                        end_dt = datetime(y, m, last_day, 23, 59, 59)
+                        query = query.where(WxSafeInfo.incident_time.between(start_dt, end_dt))
                 except:
                     pass
 
@@ -234,6 +248,17 @@ class WxSafeService:
         return [WxSafeLogOut.model_validate(obj).model_dump() for obj in objs]
 
     @classmethod
+    async def get_export_logs(cls, auth: AuthSchema):
+        """
+        获取导出操作日志
+        """
+        from app.plugin.module_wxsafe.info.model import WxSafeLog
+        stmt = select(WxSafeLog).where(WxSafeLog.action_type == "EXPORT").order_by(WxSafeLog.created_time.desc())
+        result = await auth.db.execute(stmt)
+        objs = result.scalars().all()
+        return [WxSafeLogOut.model_validate(obj).model_dump() for obj in objs]
+
+    @classmethod
     async def import_wx_safe(cls, auth: AuthSchema, file_content: bytes):
         """
         批量导入
@@ -248,11 +273,26 @@ class WxSafeService:
         """
         from app.utils.excel_util import ExcelUtil
         
+        # 提前备份检索条件，防止被 get_wx_safe_list 内部的 pop 操作清空
+        query_snapshot = str(search) if search else "全量导出"
+        
         # 1. 执行与列表查询相同的全量逻辑 (不分页)
         # 为简化逻辑，我们这里复用 get_wx_safe_list 的过滤思想但返回全量
         # 获取 10000 条作为全量限制
         result = await cls.get_wx_safe_list(auth, 0, 10000, search)
         list_data_展平 = result["items"]
+        
+        # 记录导出安全日志
+        await cls._record_audit_log(
+            auth, 
+            clue_number="ALL", 
+            diff={
+                "export_query": query_snapshot,
+                "export_count": len(list_data_展平),
+                "export_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }, 
+            action="EXPORT"
+        )
         
         # 定义字段映射
         mapping_dict = {
