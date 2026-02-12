@@ -29,15 +29,16 @@ class BriefReport(BriefBase):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="主键ID")
     filename: Mapped[str] = mapped_column(String(255), comment="原始文件名")
-    focus: Mapped[str | None] = mapped_column(String(255), nullable=True, comment="分析关注点")
+    focus: Mapped[str | None] = mapped_column(String(500), nullable=True, comment="分析关注点")
     
-    # 原始数据快照 (JSON 格式)
-    original_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="原始工单数据快照")
+    # 统计摘要数据 (JSON 格式)
+    summary_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="统计摘要数据(JSON)")
     
     # AI 分析结果 (Markdown 格式)
-    analysis_content: Mapped[str | None] = mapped_column(Text, nullable=True, comment="AI分析报告内容")
+    report_content: Mapped[str | None] = mapped_column(Text, nullable=True, comment="AI分析报告内容")
     
-    word_count: Mapped[int | None] = mapped_column(nullable=True, comment="报告字数")
+    # 报告所属月份/日期
+    report_date: Mapped[datetime] = mapped_column(DateTime, nullable=True, comment="报告所属日期")
     
     creator_id: Mapped[int | None] = mapped_column(nullable=True, comment="创建者ID")
     

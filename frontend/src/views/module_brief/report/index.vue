@@ -66,7 +66,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import request from '@/utils/request';
+import { listBriefReport, generateBriefReport } from '@/api/module_brief';
 
 const router = useRouter();
 const loading = ref(false);
@@ -87,11 +87,7 @@ const uploadFile = ref<any>(null);
 const getList = async () => {
   loading.value = true;
   try {
-    const res: any = await request({
-      url: '/brief/list',
-      method: 'get',
-      params: queryParams.value
-    });
+    const res: any = await listBriefReport(queryParams.value);
     list.value = res.data.items || [];
     total.value = res.data.total || 0;
   } catch (error) {
@@ -122,14 +118,8 @@ const submitUpload = async () => {
   }
 
   try {
-    const res: any = await request({
-      url: '/brief/upload',
-      method: 'post',
-      data: formData,
-      params: { focus: uploadForm.value.focus }, // 有些接口可能从 query 传 focus
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    ElMessage.success('分析成功');
+    const res: any = await generateBriefReport(formData);
+    ElMessage.success('分析请求已提交');
     uploadVisible.value = false;
     getList();
     // 跳转到详情

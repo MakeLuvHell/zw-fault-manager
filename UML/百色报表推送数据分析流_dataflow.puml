@@ -1,0 +1,66 @@
+@startuml 百色报表推送数据分析流 - 数据流转
+skinparam activity {
+  BackgroundColor white
+  BorderColor #333333
+  ArrowColor #333333
+}
+
+start
+
+partition "1. 开始 (Start)" {
+  :<b>输入变量</b>
+  ----
+  * AI_ANALYSIS_FOCUS (String)
+  * report_data (JSON String)
+  * MAX_WORDS (String, default="200");
+}
+
+partition "2. 数据预处理 (Python Code)" {
+  :<b>Input</b>: report_data;
+  :<b>Processing</b>
+  ----
+  1. json.loads(report_data) -> List
+  2. Loop list -> "Key: Value" string
+  3. Join with "---";
+  :<b>Output</b>: formatted_data;
+}
+
+partition "3. LLM 分析 (Qwen3)" {
+  :<b>Input</b>: 
+  formatted_data, 
+  AI_ANALYSIS_FOCUS, 
+  MAX_WORDS;
+  :<b>Prompt Engineering</b>
+  ----
+  <b>System</b>: You are a data analysis expert...
+  <b>User</b>: 
+  Focus: {{AI_ANALYSIS_FOCUS}}
+  Data:
+  {{formatted_data}};
+  :<b>Inference</b>: Generate analysis text;
+  :<b>Output</b>: text (Raw Analysis);
+}
+
+partition "4. 输出验证 (Python Code)" {
+  :<b>Input</b>: text, MAX_WORDS;
+  :<b>Processing</b>
+  ----
+  1. result = text.strip()
+  2. max_words = int(MAX_WORDS)
+  3. IF len(result) > max_words THEN
+       result = result[:max_words-3] + "..."
+     ENDIF;
+  :<b>Output</b>: 
+  final_analysis, 
+  word_count;
+}
+
+partition "5. 结束 (End)" {
+  :<b>最终输出</b>
+  ----
+  analysis = final_analysis
+  word_count = word_count;
+}
+
+stop
+@enduml

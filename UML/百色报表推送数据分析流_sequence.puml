@@ -1,0 +1,71 @@
+@startuml
+title 百色报表推送数据分析流 (时序图)
+
+participant "Client/User\n(用户)" as User
+participant "Dify Engine\n(流程引擎)" as Engine
+participant "Preprocessing Node\n(数据预处理)" as Pre
+participant "LLM Model\n(Qwen3-235b)" as LLM
+participant "Validation Node\n(输出验证)" as Val
+
+autonumber
+
+note over User: 用户发起请求
+User -> Engine: 触发工作流 (Run Workflow)
+activate Engine
+
+note right of User
+  <color:blue>输入参数 (Inputs):</color>
+  1. AI_ANALYSIS_FOCUS (分析关注点)
+  2. report_data (原始JSON报表数据)
+  3. MAX_WORDS (最大字数, 默认200)
+end note
+
+== Step 1: 数据预处理 (Preprocessing) ==
+Engine -> Pre: 执行 Python 代码
+activate Pre
+note right of Pre
+  <color:green>逻辑处理:</color>
+  1. json.loads(report_data) -> List
+  2. 遍历列表，格式化为 "Key: Value"
+  3. 拼接字符串 (formatted_data)
+end note
+Pre --> Engine: 返回 formatted_data
+deactivate Pre
+
+== Step 2: AI 智能分析 (LLM Analysis) ==
+Engine -> LLM: 调用大模型接口 (Chat Completion)
+activate LLM
+note left of LLM
+  <color:orange>Prompt 构建:</color>
+  [System]
+  你是一个专业的数据分析专家...
+  [User]
+  分析关注点: AI_ANALYSIS_FOCUS
+  数据内容: formatted_data
+  请生成 MAX_WORDS 字以内的简报。
+end note
+LLM --> Engine: 返回生成的分析文本 (analysis_result)
+deactivate LLM
+
+== Step 3: 输出验证 (Validation) ==
+Engine -> Val: 执行 Python 代码
+activate Val
+note right of Val
+  <color:green>逻辑处理:</color>
+  1. 清洗: analysis_result.strip()
+  2. 校验: len(result) > int(MAX_WORDS)
+  3. 截断: 若超长则截断并加 "..."
+end note
+Val --> Engine: 返回 {final_analysis, word_count}
+deactivate Val
+
+== Step 4: 返回结果 (End) ==
+Engine -> User: 返回最终执行结果
+deactivate Engine
+note right of Engine
+  <color:blue>输出结果 (Outputs):</color>
+  1. analysis (最终分析简报)
+  2. word_count (字数统计)
+end note
+
+@enduml

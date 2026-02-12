@@ -18,9 +18,9 @@ class BriefReportCreate(BriefReportBase):
     """
     创建分析报告 (通常由系统内部调用)
     """
-    original_data: list | dict | None = Field(None, description="原始数据快照")
-    analysis_content: str | None = Field(None, description="AI分析报告内容")
-    word_count: int | None = Field(None, description="报告字数")
+    summary_data: dict | None = Field(None, description="统计摘要数据")
+    report_content: str | None = Field(None, description="AI分析报告内容")
+    report_date: datetime | None = Field(None, description="报告所属日期")
     creator_id: int | None = Field(None, description="创建者ID")
 
 
@@ -29,7 +29,7 @@ class BriefReportOut(BriefReportBase):
     分析报告输出 Schema
     """
     id: int
-    analysis_content: str | None = Field(None, description="AI分析报告内容")
-    word_count: int | None = Field(None, description="报告字数")
+    report_content: str | None = Field(None, description="AI分析报告内容")
+    report_date: datetime | None = Field(None, description="报告所属日期")
     created_time: DateTimeStr
     updated_time: DateTimeStr
